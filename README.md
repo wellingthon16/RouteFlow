@@ -1,7 +1,7 @@
 # Welcome
 This version of RouteFlow is a beta developers' release intended to evaluate RouteFlow for providing virtualized IP routing services on one or more OpenFlow switches.
 
-You can learn more about RouteFlow in our [main page in GitHub](http://cpqd.github.com/RouteFlow/) and in our [website](https://sites.google.com/site/routeflow/).
+You can learn more about RouteFlow in our [main page in GitHub](http://routeflow.github.io/RouteFlow/) and in our [website](https://sites.google.com/site/routeflow/).
 
 Please be aware of POX, OpenFlow, Open vSwitch, Quagga, MongoDB, jQuery, JIT and RouteFlow licenses and terms.
 
@@ -104,7 +104,7 @@ $ sudo lxc-console -n b1
 # ping 172.31.2.2
 ```
 
-For more details on this test, see its [tutorial](https://github.com/CPqD/RouteFlow/wiki/Tutorial-1:-rftest1).
+For more details on this test, see its [tutorial](https://github.com/routeflow/RouteFlow/wiki/Tutorial-1:-rftest1).
 
 ### rftest2
 This test should be run with a [Mininet](http://mininet.org/) simulated network.
