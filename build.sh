@@ -15,7 +15,7 @@ SUPER="$DO sudo"
 APT_OPTS="-y"
 PIP_OPTS=""
 
-ROUTEFLOW_GIT="https://github.com/CPqD/RouteFlow.git"
+ROUTEFLOW_GIT="https://github.com/routeflow/RouteFlow.git"
 DEPENDENCIES="build-essential git-core libboost-dev libboost-dev \
     libboost-program-options-dev libboost-thread-dev \
     libboost-filesystem-dev iproute-dev python-dev python-pip"
@@ -50,7 +50,7 @@ usage() {
          "specified at once."
     echo "Controllers must be specified at the end of the command."
     echo;
-    echo "Report bugs to: https://github.com/CPqD/RouteFlow/issues"
+    echo "Report bugs to: https://github.com/routeflow/RouteFlow/issues"
 }
 
 verlte() {
