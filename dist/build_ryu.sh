@@ -1,6 +1,6 @@
 #!/bin/sh
 
-RYU_GIT="https://github.com/joestringer/ryu-rfproxy.git"
+RYU_GIT="https://github.com/routeflow/ryu-rfproxy.git"
 RYU_BRANCH="origin/master"
 
 RYU_DEPS="python-gevent python-webob python-routes"
