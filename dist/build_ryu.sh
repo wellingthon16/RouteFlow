@@ -3,10 +3,7 @@
 RYU_GIT="https://github.com/routeflow/ryu-rfproxy.git"
 RYU_BRANCH="origin/master"
 
-RYU_DEPS="python-gevent python-webob python-routes"
-
-# XXX: Lock ryu at v1.9 until it works with later versions
-RYU_PIP_URL="https://pypi.python.org/packages/source/r/ryu/ryu-1.9.tar.gz#md5=9cea02610b9b2e1741297c1756a2378d"
+RYU_DEPS="python-greenlet python-eventlet python-webob python-routes"
 
 get_ryu() {
     if [ "$OVS_VERSION" != "git" ]; then
@@ -14,11 +11,11 @@ get_ryu() {
             $YELLOW
     fi
 
-    pkg_install "$MONGO_DEPS"
+    pkg_install "$RYU_DEPS"
     print_status "Fetching Ryu controller"
 
     if [ $FETCH_ONLY -ne 1 ]; then
-        $SUPER pip install oslo.config $RYU_PIP_URL ||
+        $SUPER pip install oslo.config ryu ||
             fail "Failed to fetch ryu controller"
     fi
 
