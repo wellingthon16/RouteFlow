@@ -1,5 +1,4 @@
 import bson
-import pymongo as mongo
 
 from rflib.types.Match import Match
 from rflib.types.Action import Action
@@ -16,6 +15,7 @@ VIRTUAL_PLANE_MAP = 4
 DATA_PLANE_MAP = 5
 ROUTE_MOD = 6
 CONTROLLER_REGISTER = 7
+
 
 class PortRegister(MongoIPCMessage):
     def __init__(self, vm_id=None, vm_port=None, hwaddress=None):
@@ -81,6 +81,7 @@ class PortRegister(MongoIPCMessage):
         s += "  vm_port: " + str(self.get_vm_port()) + "\n"
         s += "  hwaddress: " + str(self.get_hwaddress()) + "\n"
         return s
+
 
 class PortConfig(MongoIPCMessage):
     def __init__(self, vm_id=None, vm_port=None, operation_id=None):
@@ -263,6 +264,7 @@ class DatapathDown(MongoIPCMessage):
         s += "  dp_id: " + format_id(self.get_dp_id()) + "\n"
         return s
 
+
 class VirtualPlaneMap(MongoIPCMessage):
     def __init__(self, vm_id=None, vm_port=None, vs_id=None, vs_port=None):
         self.set_vm_id(vm_id)
@@ -341,6 +343,7 @@ class VirtualPlaneMap(MongoIPCMessage):
         s += "  vs_id: " + format_id(self.get_vs_id()) + "\n"
         s += "  vs_port: " + str(self.get_vs_port()) + "\n"
         return s
+
 
 class DataPlaneMap(MongoIPCMessage):
     def __init__(self, ct_id=None, dp_id=None, dp_port=None, vs_id=None, vs_port=None):
@@ -434,6 +437,7 @@ class DataPlaneMap(MongoIPCMessage):
         s += "  vs_id: " + format_id(self.get_vs_id()) + "\n"
         s += "  vs_port: " + str(self.get_vs_port()) + "\n"
         return s
+
 
 class RouteMod(MongoIPCMessage):
     def __init__(self, mod=None, id=None, matches=None, actions=None, options=None):
