@@ -15,6 +15,7 @@ DATAPATH_DOWN = 3
 VIRTUAL_PLANE_MAP = 4
 DATA_PLANE_MAP = 5
 ROUTE_MOD = 6
+CONTROLLER_REGISTER = 7
 
 class PortRegister(MongoIPCMessage):
     def __init__(self, vm_id=None, vm_port=None, hwaddress=None):
@@ -540,4 +541,70 @@ class RouteMod(MongoIPCMessage):
         s += "  options:\n"
         for option in self.get_options():
             s += "    " + str(Option.from_dict(option)) + "\n"
+        return s
+
+
+class ControllerRegister(MongoIPCMessage):
+    def __init__(self, ct_addr=None, ct_port=None, ct_role=None):
+        self.set_ct_addr(ct_addr)
+        self.set_ct_port(ct_port)
+        self.set_ct_role(ct_role)
+
+    def get_type(self):
+        return CONTROLLER_REGISTER
+
+    def get_ct_addr(self):
+            return self.ct_addr
+
+    def set_ct_addr(self, ct_addr):
+        self.ct_addr = 0 if ct_addr is None else ct_addr
+        try:
+            self.ct_addr = str(ct_addr)
+        except Exception:
+            self.ct_addr = 0
+
+    def get_ct_port(self):
+            return self.ct_port
+
+    def set_ct_port(self, ct_port):
+        self.ct_port = 0 if ct_port is None else ct_port
+        try:
+            self.ct_port = str(ct_port)
+        except Exception:
+            self.ct_port = 0
+
+    def get_ct_role(self):
+            return self.ct_role
+
+    def set_ct_role(self, ct_role):
+        self.ct_role = "no_change" if ct_role is None else ct_role
+        try:
+            self.ct_role = str(ct_role)
+        except Exception:
+            self.ct_role = 0
+
+    def from_dict(self, data):
+        self.set_ct_id(data["ct_addr"])
+        self.set_dp_id(data["ct_port"])
+        self.set_dp_port(data["ct_role"])
+
+    def to_dict(self):
+        data = {}
+        data["ct_addr"] = str(self.get_ct_addr())
+        data["ct_port"] = str(self.get_ct_port())
+        data["ct_role"] = str(self.get_ct_role())
+        return data
+
+    def from_bson(self, data):
+        data = bson.BSON.decode(data)
+        self.from_dict(data)
+
+    def to_bson(self):
+        return bson.BSON.encode(self.get_dict())
+
+    def __str__(self):
+        s = "ControllerRegister\n"
+        s += "  ct_addr: " + format_id(self.get_ct_addr()) + "\n"
+        s += "  ct_port: " + format_id(self.get_ct_port()) + "\n"
+        s += "  ct_role: " + str(self.get_ct_role()) + "\n"
         return s
