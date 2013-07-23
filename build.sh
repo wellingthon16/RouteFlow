@@ -141,6 +141,11 @@ build_routeflow() {
 
         if [ $INSTALL_VMS -eq 1 ]; then
             $DO cd rftest
+            $SUPER mkdir -p /cgroup
+            if [ grep -q "cgroup" "/etc/fstab" ]; then
+                $DO echo "none /cgroup cgroup defaults 0 0" >> /etc/fstab
+            fi
+            $SUPER mount none -t cgroup /cgroup
             $SUPER ./create
             $DO cd -
         fi
