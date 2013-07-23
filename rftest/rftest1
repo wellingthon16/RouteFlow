@@ -58,9 +58,13 @@ reset() {
     sudo ovs-vsctl emer-reset &> /dev/null;
 
     echo_bold "-> Stopping and resetting LXC VMs...";
-    lxc-shutdown -n rfvm1;
-    lxc-shutdown -n b1;
-    lxc-shutdown -n b2;
+    for vm in rfvm1 b1 b2; do
+        lxc-shutdown -n "$vm"
+        if [ $? -ne 0 ]; then
+            lxc-stop -n $vm
+        fi
+        rm -rf $LXCDIR/$vm/rootfs/var/run/network/ifstate;
+    done
 
     echo_bold "-> Deleting data from previous runs...";
     mongo db --eval "
@@ -70,9 +74,6 @@ reset() {
         db.getCollection('rfclient<->rfserver').drop(); 
         db.getCollection('rfserver<->rfproxy').drop();
     "
-    rm -rf $LXCDIR/rfvm1/rootfs/var/run/network/ifstate;
-    rm -rf $LXCDIR/b1/rootfs/var/run/network/ifstate;
-    rm -rf $LXCDIR/b2/rootfs/var/run/network/ifstate;
     rm -rf /var/lib/lxc/rfvm1/rootfs/opt/rfclient;
 }
 reset 1
