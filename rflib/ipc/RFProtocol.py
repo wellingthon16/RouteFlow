@@ -588,9 +588,9 @@ class ControllerRegister(MongoIPCMessage):
             self.ct_role = 0
 
     def from_dict(self, data):
-        self.set_ct_id(data["ct_addr"])
-        self.set_dp_id(data["ct_port"])
-        self.set_dp_port(data["ct_role"])
+        self.set_ct_addr(data["ct_addr"])
+        self.set_ct_port(data["ct_port"])
+        self.set_ct_role(data["ct_role"])
 
     def to_dict(self):
         data = {}
