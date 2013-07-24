@@ -374,6 +374,7 @@ def genPy(messages, fname):
         v += 1
     g.blankLine()
     for name, msg in messages:
+        g.blankLine()
         g.addLine("class {0}(MongoIPCMessage):".format(name))
         g.increaseIndent()
         g.addLine("def __init__(self, {0}):".format(", ".join([f + "=None" for t, f in msg])))

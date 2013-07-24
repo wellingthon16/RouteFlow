@@ -148,6 +148,7 @@ class PortConfig(MongoIPCMessage):
         s += "  operation_id: " + str(self.get_operation_id()) + "\n"
         return s
 
+
 class DatapathPortRegister(MongoIPCMessage):
     def __init__(self, ct_id=None, dp_id=None, dp_port=None):
         self.set_ct_id(ct_id)
@@ -212,6 +213,7 @@ class DatapathPortRegister(MongoIPCMessage):
         s += "  dp_id: " + format_id(self.get_dp_id()) + "\n"
         s += "  dp_port: " + str(self.get_dp_port()) + "\n"
         return s
+
 
 class DatapathDown(MongoIPCMessage):
     def __init__(self, ct_id=None, dp_id=None):
