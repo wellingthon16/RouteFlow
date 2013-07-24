@@ -35,8 +35,8 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
     def process(self, _from, to, channel, msg):
         type_ = msg.get_type()
         if type_ == CONTROLLER_REGISTER:
-            self.controllers[msg.get_ct_addr() + ':' + msg.get_ct_port()] = \
-                msg.get_ct_role()
+            self.controllers[str(msg.get_ct_addr()) + ':'
+                             + str(msg.get_ct_port())] = msg.get_ct_role()
             self.log.info("A %s controller at %s:%s is up", msg.get_ct_role(),
                           msg.get_ct_addr(), msg.get_ct_port())
 

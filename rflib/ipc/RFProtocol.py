@@ -558,34 +558,34 @@ class ControllerRegister(MongoIPCMessage):
         return CONTROLLER_REGISTER
 
     def get_ct_addr(self):
-            return self.ct_addr
+        return self.ct_addr
 
     def set_ct_addr(self, ct_addr):
-        self.ct_addr = 0 if ct_addr is None else ct_addr
+        ct_addr = "" if ct_addr is None else ct_addr
         try:
             self.ct_addr = str(ct_addr)
-        except Exception:
-            self.ct_addr = 0
+        except:
+            self.ct_addr = ""
 
     def get_ct_port(self):
-            return self.ct_port
+        return self.ct_port
 
     def set_ct_port(self, ct_port):
-        self.ct_port = 0 if ct_port is None else ct_port
+        ct_port = 0 if ct_port is None else ct_port
         try:
-            self.ct_port = str(ct_port)
-        except Exception:
+            self.ct_port = int(ct_port)
+        except:
             self.ct_port = 0
 
     def get_ct_role(self):
-            return self.ct_role
+        return self.ct_role
 
     def set_ct_role(self, ct_role):
-        self.ct_role = "no_change" if ct_role is None else ct_role
+        ct_role = "" if ct_role is None else ct_role
         try:
             self.ct_role = str(ct_role)
-        except Exception:
-            self.ct_role = 0
+        except:
+            self.ct_role = ""
 
     def from_dict(self, data):
         self.set_ct_addr(data["ct_addr"])
@@ -596,7 +596,7 @@ class ControllerRegister(MongoIPCMessage):
         data = {}
         data["ct_addr"] = str(self.get_ct_addr())
         data["ct_port"] = str(self.get_ct_port())
-        data["ct_role"] = str(self.get_ct_role())
+        data["ct_role"] = self.get_ct_role()
         return data
 
     def from_bson(self, data):
@@ -608,7 +608,7 @@ class ControllerRegister(MongoIPCMessage):
 
     def __str__(self):
         s = "ControllerRegister\n"
-        s += "  ct_addr: " + format_id(self.get_ct_addr()) + "\n"
-        s += "  ct_port: " + format_id(self.get_ct_port()) + "\n"
+        s += "  ct_addr: " + str(self.get_ct_addr()) + "\n"
+        s += "  ct_port: " + str(self.get_ct_port()) + "\n"
         s += "  ct_role: " + str(self.get_ct_role()) + "\n"
         return s

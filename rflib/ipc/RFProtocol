@@ -36,3 +36,8 @@ RouteMod
     match[] matches
     action[] actions
     option[] options
+
+ControllerRegister                                                         
+    ip ct_addr                                                             
+    i32 ct_port                                                            
+    string ct_role

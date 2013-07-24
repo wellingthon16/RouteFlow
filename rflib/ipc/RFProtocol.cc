@@ -534,3 +534,70 @@ string RouteMod::str() {
     ss << "  options: " << OptionList::to_BSON(get_options()) << endl;
     return ss.str();
 }
+
+ControllerRegister::ControllerRegister() {
+    set_ct_addr(IPAddress(IPV4));
+    set_ct_port(0);
+    set_ct_role("");
+}
+
+ControllerRegister::ControllerRegister(IPAddress ct_addr, uint32_t ct_port, string ct_role) {
+    set_ct_addr(ct_addr);
+    set_ct_port(ct_port);
+    set_ct_role(ct_role);
+}
+
+int ControllerRegister::get_type() {
+    return CONTROLLER_REGISTER;
+}
+
+IPAddress ControllerRegister::get_ct_addr() {
+    return this->ct_addr;
+}
+
+void ControllerRegister::set_ct_addr(IPAddress ct_addr) {
+    this->ct_addr = ct_addr;
+}
+
+uint32_t ControllerRegister::get_ct_port() {
+    return this->ct_port;
+}
+
+void ControllerRegister::set_ct_port(uint32_t ct_port) {
+    this->ct_port = ct_port;
+}
+
+string ControllerRegister::get_ct_role() {
+    return this->ct_role;
+}
+
+void ControllerRegister::set_ct_role(string ct_role) {
+    this->ct_role = ct_role;
+}
+
+void ControllerRegister::from_BSON(const char* data) {
+    mongo::BSONObj obj(data);
+    set_ct_addr(IPAddress(IPV4, obj["ct_addr"].String()));
+    set_ct_port(string_to<uint32_t>(obj["ct_port"].String()));
+    set_ct_role(obj["ct_role"].String());
+}
+
+const char* ControllerRegister::to_BSON() {
+    mongo::BSONObjBuilder _b;
+    _b.append("ct_addr", get_ct_addr().toString());
+    _b.append("ct_port", to_string<uint32_t>(get_ct_port()));
+    _b.append("ct_role", get_ct_role());
+    mongo::BSONObj o = _b.obj();
+    char* data = new char[o.objsize()];
+    memcpy(data, o.objdata(), o.objsize());
+    return data;
+}
+
+string ControllerRegister::str() {
+    stringstream ss;
+    ss << "ControllerRegister" << endl;
+    ss << "  ct_addr: " << get_ct_addr().toString() << endl;
+    ss << "  ct_port: " << to_string<uint32_t>(get_ct_port()) << endl;
+    ss << "  ct_role: " << get_ct_role() << endl;
+    return ss.str();
+}

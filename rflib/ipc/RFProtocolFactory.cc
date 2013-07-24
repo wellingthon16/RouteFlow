@@ -16,6 +16,8 @@ IPCMessage* RFProtocolFactory::buildForType(int type) {
             return new DataPlaneMap();
         case ROUTE_MOD:
             return new RouteMod();
+        case CONTROLLER_REGISTER:
+            return new ControllerRegister();
         default:
             return NULL;
     }
