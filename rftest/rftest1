@@ -125,8 +125,6 @@ if [ "$ACTION" != "RESET" ]; then
 
     chmod +x /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
 
-    lxc-start -n rfvm1 -d
-
     echo_bold "-> Starting the controller and RFPRoxy..."
     case "$ACTION" in
     POX)
@@ -153,6 +151,9 @@ if [ "$ACTION" != "RESET" ]; then
     ovs-vsctl set Bridge dp0 protocols=$PROTOCOLS
     ovs-vsctl set-controller dp0 tcp:127.0.0.1:$CONTROLLER_PORT
     ifconfig dp0 up
+
+    echo_bold "-> Starting RFVM1..."
+    lxc-start -n rfvm1 -d
 
     echo_bold "-> Starting the sample network..."
     # Start the host VMs and give them a little time
