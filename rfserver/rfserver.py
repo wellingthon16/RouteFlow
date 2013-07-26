@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 
+import os
 import sys
 import logging
 import binascii
@@ -29,10 +30,13 @@ REGISTER_ISL = 2
 
 class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
     def __init__(self, configfile, islconffile):
-        self.rftable = RFTable()
-        self.isltable = RFISLTable()
         self.config = RFConfig(configfile)
         self.islconf = RFISLConf(islconffile)
+
+        # Initialise state tables
+        self.rftable = RFTable()
+        self.isltable = RFISLTable()
+
         # Logging
         self.log = logging.getLogger("rfserver")
         self.log.setLevel(logging.INFO)
@@ -416,10 +420,13 @@ if __name__ == "__main__":
                   'listens for route updates, and configures flow tables'
     epilog = 'Report bugs to: https://github.com/routeflow/RouteFlow/issues'
 
+    config = os.path.dirname(os.path.realpath(__file__)) + "/config.csv"
+    islconf = os.path.dirname(os.path.realpath(__file__)) + "/islconf.csv"
+
     parser = argparse.ArgumentParser(description=description, epilog=epilog)
-    parser.add_argument('configfile',
+    parser.add_argument('configfile', default=config,
                         help='VM-VS-DP mapping configuration file')
-    parser.add_argument('-i', '--islconfig',
+    parser.add_argument('-i', '--islconfig', default=islconf,
                         help='ISL mapping configuration file')
 
     args = parser.parse_args()
