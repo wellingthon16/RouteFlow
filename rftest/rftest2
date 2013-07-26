@@ -9,6 +9,7 @@ SCRIPT_NAME="rftest2"
 LXCDIR=/var/lib/lxc
 MONGODB_CONF=/etc/mongodb.conf
 MONGODB_PORT=27017
+MONGODB_ADDR=192.168.10.1
 CONTROLLER_PORT=6633
 RF_HOME=..
 export PATH=$PATH:/usr/local/bin:/usr/local/sbin
@@ -88,10 +89,10 @@ reset 1
 trap "reset 0; exit 0" INT
 
 echo_bold "-> Setting up the management bridge (lxcbr0)..."
-ifconfig lxcbr0 192.169.1.1 up
+ifconfig lxcbr0 $MONGODB_ADDR up
 
 echo_bold "-> Setting up MongoDB..."
-sed -i "/bind_ip/c\bind_ip = 127.0.0.1,192.169.1.1" $MONGODB_CONF
+sed -i "/bind_ip/c\bind_ip = 127.0.0.1,$MONGODB_ADDR" $MONGODB_CONF
 service mongodb restart
 wait_port_listen $MONGODB_PORT
 

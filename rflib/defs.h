@@ -1,7 +1,7 @@
 #ifndef __DEFS_H__
 #define __DEFS_H__
 
-#define MONGO_ADDRESS "192.169.1.1:27017"
+#define MONGO_ADDRESS "192.168.10.1:27017"
 #define MONGO_DB_NAME "db"
 
 #define RFCLIENT_RFSERVER_CHANNEL "rfclient<->rfserver"
