@@ -68,10 +68,10 @@ reset() {
 
     echo_bold "-> Deleting data from previous runs...";
     mongo db --eval "
-        db.getCollection('rftable').drop(); 
-        db.getCollection('rfconfig').drop(); 
-        db.getCollection('rfstats').drop(); 
-        db.getCollection('rfclient<->rfserver').drop(); 
+        db.getCollection('rftable').drop();
+        db.getCollection('rfconfig').drop();
+        db.getCollection('rfstats').drop();
+        db.getCollection('rfclient<->rfserver').drop();
         db.getCollection('rfserver<->rfproxy').drop();
     "
     rm -rf /var/lib/lxc/rfvm1/rootfs/opt/rfclient;
