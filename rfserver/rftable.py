@@ -1,5 +1,4 @@
 import pymongo as mongo
-import bson
 
 from rflib.defs import *
 from rflib.ipc.MongoIPC import format_address
@@ -17,6 +16,7 @@ RFCONFIGENTRY = 1
 RFISLCONFENTRY = 2
 RFISLENTRY = 3
 
+
 class MongoTableEntryFactory:
     @staticmethod
     def make(type_):
@@ -28,6 +28,7 @@ class MongoTableEntryFactory:
             return RFISLEntry()
         elif type_ == RFISLCONFENTRY:
             return RFISLConfEntry()
+
 
 class MongoTable:
     def __init__(self, address, name, entry_type):
@@ -124,6 +125,7 @@ class RFConfig(MongoTable):
             return None
         return result[0]
 
+
 class RFISLTable(MongoTable):
     def __init__(self, address=MONGO_ADDRESS):
         MongoTable.__init__(self, address, RFISL_NAME, RFISLENTRY)
@@ -148,6 +150,7 @@ class RFISLTable(MongoTable):
     def is_dp_registered(self, ct_id, dp_id):
         return bool(self.get_dp_entries(ct_id, dp_id))
 
+
 class RFISLConf(MongoTable):
     def __init__(self, ifile, address=MONGO_ADDRESS):
         MongoTable.__init__(self, address, RFISLCONF_NAME, RFISLCONFENTRY)
@@ -171,13 +174,16 @@ class RFISLConf(MongoTable):
         results.extend(self.get_entries(rem_ct=ct, rem_id=id_, rem_port=port))
         return results
 
+
 # Convenience functions for packing/unpacking to a dict for BSON representation
 def load_from_dict(src, obj, attr):
     setattr(obj, attr, src[attr])
 
+
 def pack_into_dict(dest, obj, attr):
     value = getattr(obj, attr)
     dest[attr] = "" if value is None else str(value)
+
 
 class RFEntry:
     def __init__(self, vm_id=None, vm_port=None, ct_id=None, dp_id=None,
@@ -269,7 +275,7 @@ class RFEntry:
         for k, v in data.items():
             if str(v) is "":
                 data[k] = None
-            elif k != "_id" and k != "eth_addr": # All our data is int
+            elif k != "_id" and k != "eth_addr":  # All our data is int
                 data[k] = int(v)
         self.id = data["_id"]
         load_from_dict(data, self, "vm_id")
@@ -294,6 +300,7 @@ class RFEntry:
         pack_into_dict(data, self, "vs_port")
         pack_into_dict(data, self, "eth_addr")
         return data
+
 
 class RFISLEntry:
     def __init__(self, vm_id=None, ct_id=None, dp_id=None,  dp_port=None,
@@ -348,16 +355,16 @@ class RFISLEntry:
                 self.rem_port is not None)
 
     def associate(self, ct, id_, port, eth_addr):
-       if self.is_idle_dp_port():
-           self.rem_ct = ct
-           self.rem_id = id_
-           self.rem_port = port
-           self.rem_eth_addr = eth_addr
-       elif self.is_idle_remote():
-           self.ct_id = ct
-           self.dp_id = id_
-           self.dp_port = port
-           self.eth_addr = eth_addr
+        if self.is_idle_dp_port():
+            self.rem_ct = ct
+            self.rem_id = id_
+            self.rem_port = port
+            self.rem_eth_addr = eth_addr
+        elif self.is_idle_remote():
+            self.ct_id = ct
+            self.dp_id = id_
+            self.dp_port = port
+            self.eth_addr = eth_addr
 
     def get_status(self):
         if self.is_idle_dp_port():
@@ -399,6 +406,7 @@ class RFISLEntry:
         pack_into_dict(data, self, "rem_eth_addr")
         return data
 
+
 class RFISLConfEntry:
     def __init__(self, vm_id=None, ct_id=None, dp_id=None,  dp_port=None,
                  eth_addr=None, rem_ct=None, rem_id=None, rem_port=None,
@@ -424,7 +432,7 @@ class RFISLConfEntry:
                   self.rem_eth_addr)
 
     def get_status(self):
-       return RFENTRY_ACTIVE
+        return RFENTRY_ACTIVE
 
     def from_dict(self, data):
         for k, v in data.items():
@@ -443,7 +451,6 @@ class RFISLConfEntry:
         load_from_dict(data, self, "rem_port")
         load_from_dict(data, self, "rem_eth_addr")
 
-
     def to_dict(self):
         data = {}
         if self.id is not None:
@@ -458,6 +465,7 @@ class RFISLConfEntry:
         pack_into_dict(data, self, "rem_port")
         pack_into_dict(data, self, "rem_eth_addr")
         return data
+
 
 class RFConfigEntry:
     def __init__(self, vm_id=None, vm_port=None, ct_id=None, dp_id=None,
@@ -480,7 +488,7 @@ class RFConfigEntry:
         for k, v in data.items():
             if str(v) is "":
                 data[k] = None
-            elif k != "_id": # All our data is int
+            elif k != "_id":  # All our data is int
                 data[k] = int(v)
         self.id = data["_id"]
         load_from_dict(data, self, "vm_id")
@@ -488,7 +496,6 @@ class RFConfigEntry:
         load_from_dict(data, self, "ct_id")
         load_from_dict(data, self, "dp_id")
         load_from_dict(data, self, "dp_port")
-
 
     def to_dict(self):
         data = {}
