@@ -4,6 +4,7 @@
 import logging
 import threading
 import time
+import socket
 
 import rflib.ipc.IPC as IPC
 import rflib.ipc.MongoIPC as MongoIPC
@@ -40,8 +41,15 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
             self.log.info("A %s controller at %s:%s is up", msg.get_ct_role(),
                           msg.get_ct_addr(), msg.get_ct_port())
 
-    def test():
-        pass
+    def test(self, host, port):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        result = s.connect_ex(str(host), port)
+
+        if result != 0:
+            log.info("Controller listening at %s:%s died", host, port)
+            self.controllers.pop(str(host) + ':' + str(port), None)
+
+        s.close()
 
 
 class Monitor(object):
