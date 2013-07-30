@@ -26,6 +26,7 @@ REGISTER_IDLE = 0
 REGISTER_ASSOCIATED = 1
 REGISTER_ISL = 2
 
+
 class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
     def __init__(self, configfile, islconffile):
         self.rftable = RFTable()
@@ -411,9 +412,9 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
                            format_id(entry.vs_id), entry.vs_port))
 
 if __name__ == "__main__":
-    description='RFServer co-ordinates RFClient and RFProxy instances, ' \
-                'listens for route updates, and configures flow tables'
-    epilog='Report bugs to: https://github.com/routeflow/RouteFlow/issues'
+    description = 'RFServer co-ordinates RFClient and RFProxy instances, ' \
+                  'listens for route updates, and configures flow tables'
+    epilog = 'Report bugs to: https://github.com/routeflow/RouteFlow/issues'
 
     parser = argparse.ArgumentParser(description=description, epilog=epilog)
     parser.add_argument('configfile',
