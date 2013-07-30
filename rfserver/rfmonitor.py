@@ -5,6 +5,7 @@ import logging
 import threading
 import time
 import socket
+from functools import partial
 
 import rflib.ipc.IPC as IPC
 import rflib.ipc.MongoIPC as MongoIPC
@@ -20,6 +21,7 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
     """Monitors all the controller instances for failiure"""
     def __init__(self, *arg, **kwargs):
         self.controllers = dict()
+        self.monitors = dict()
         self.ipc = MongoIPC.MongoIPCMessageService(MONGO_ADDRESS,
                                                    MONGO_DB_NAME,
                                                    RFMONITOR_ID,
@@ -36,19 +38,26 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
     def process(self, _from, to, channel, msg):
         type_ = msg.get_type()
         if type_ == CONTROLLER_REGISTER:
-            self.controllers[str(msg.get_ct_addr()) + ':'
+            self.controllers[msg.get_ct_addr() + ':'
                              + str(msg.get_ct_port())] = msg.get_ct_role()
             self.log.info("A %s controller at %s:%s is up", msg.get_ct_role(),
                           msg.get_ct_addr(), msg.get_ct_port())
+            test_function = partial(self.test)
+            monitor = Monitor(msg.get_ct_addr(), msg.get_ct_port(), test_function,
+                              callback_time=1000)
+            self.monitors[msg.get_ct_addr() + ':' +
+                          str(msg.get_ct_port())] = monitor
+            monitor.start_test()
 
     def test(self, host, port):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        result = s.connect_ex(str(host), port)
+        s = socket(AF_INET, SOCK_STREAM)
+        result = s.connect_ex((host, port))
 
         if result != 0:
-            log.info("Controller listening at %s:%s died", host, port)
-            self.controllers.pop(str(host) + ':' + str(port), None)
-
+            self.log.info("Controller listening at %s:%s died", host, port)
+            self.controllers.pop(host + ':' + str(port), None)
+            self.monitors[host + ':' + str(port)].stop_test()
+            self.monitors.pop(host + ':' + str(port), None)
         s.close()
 
 
