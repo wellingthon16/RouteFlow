@@ -9,7 +9,8 @@ SCRIPT_NAME="rftest1"
 LXCDIR=/var/lib/lxc
 MONGODB_CONF=/etc/mongodb.conf
 MONGODB_PORT=27017
-CONTROLLER_PORT=6633
+CONTROLLER_PORT1=6633
+CONTROLLER_PORT2=6634
 RF_HOME=..
 export PATH=$PATH:/usr/local/bin:/usr/local/sbin
 export PYTHONPATH=$PYTHONPATH:$RF_HOME
@@ -102,11 +103,14 @@ chmod +x /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
 
 lxc-start -n rfvm1 -d
 
+echo_bold "-> Starting RFMonitor..."
+./rfserver/rfmonitor.py &
+
 echo_bold "-> Starting the controller and RFPRoxy..."
-cd pox
-./pox.py log.level --=INFO topology openflow.topology openflow.discovery rfproxy rfstats &
-cd -
-wait_port_listen $CONTROLLER_PORT
+ryu-manager ryu-rfproxy/rfproxy.py --ofp-role master --ofp-tcp-listen-port $CONTROLLER_PORT1 &
+wait_port_listen $CONTROLLER_PORT1
+ryu-manager ryu-rfproxy/rfproxy.py --ofp-role slave --ofp-tcp-listen-port $CONTROLLER_PORT2 &
+wait_port_listen $CONTROLLER_PORT2
 
 echo_bold "-> Starting RFServer..."
 ./rfserver/rfserver.py rftest/rftest1config.csv &
@@ -115,8 +119,8 @@ echo_bold "-> Starting the control plane network (dp0 VS)..."
 ovs-vsctl add-br dp0
 ovs-vsctl add-port dp0 rfvm1.1
 ovs-vsctl add-port dp0 rfvm1.2
-ovs-vsctl set Bridge dp0 other-config:datapath-id=7266767372667673
-ovs-vsctl set-controller dp0 tcp:127.0.0.1:$CONTROLLER_PORT
+ovs-vsctl set Bridge dp0 other-config:datapath-id=7266767372667673 protocols=OpenFlow10,OpenFlow12,OpenFlow13
+ovs-vsctl set-controller dp0 tcp:127.0.0.1:$CONTROLLER_PORT1 tcp:127.0.0.1:$CONTROLLER_PORT2
 ifconfig dp0 up
 
 echo_bold "-> Starting the sample network..."
@@ -127,8 +131,8 @@ sleep 2
 ovs-vsctl add-br switch1
 ovs-vsctl add-port switch1 b1.0
 ovs-vsctl add-port switch1 b2.0
-ovs-vsctl set Bridge switch1 other-config:datapath-id=0000000000000099
-ovs-vsctl set-controller switch1 tcp:127.0.0.1:$CONTROLLER_PORT
+ovs-vsctl set Bridge switch1 other-config:datapath-id=0000000000000099 protocols=OpenFlow10,OpenFlow12,OpenFlow13
+ovs-vsctl set-controller switch1 tcp:127.0.0.1:$CONTROLLER_PORT1 tcp:127.0.0.1:$CONTROLLER_PORT2
 ifconfig switch1 up
 
 echo_bold "---"
