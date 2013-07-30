@@ -63,23 +63,29 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
 
 class Monitor(object):
     """Monitors each controller individually"""
-    def __init__(self, host, port, callback_time):
+    def __init__(self, host, port, test, callback_time=1000):
         super(Monitor, self).__init__()
         self.host = host
         self.port = port
+        self.test = test
         self.callback_time = callback_time
+        self.running = False
 
-    def start_test():
-        pass
+    def start_test(self):
+        self.running = True
+        self.timeout = time.time()
+        self.schedule_test()
 
-    def stop_test():
-        pass
+    def stop_test(self):
+        self.running = False
 
-    def schedule_test():
-        pass
+    def schedule_test(self):
+        while self.running:
+            current_time = time.time()
+            if self.timeout <= current_time:
+                self.timeout += self.callback_time/1000.00
+            self.test(self.host, self.port)
 
-    def run_test():
-        pass
 
 if __name__ == "__main__":
     description = 'RFMonitor monitors RFProxy instances for failiure'
