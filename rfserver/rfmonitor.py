@@ -36,6 +36,12 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
         self.log.addHandler(ch)
 
     def process(self, _from, to, channel, msg):
+        """Process messages sent by controllers.
+
+        Types of messages being handled:
+        CONTROLLER_REGISTER -- Register Controller details with RFMonitor.
+
+        """        
         type_ = msg.get_type()
         if type_ == CONTROLLER_REGISTER:
             self.controllers[msg.get_ct_addr() + ':'
@@ -50,6 +56,13 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
             monitor.start_test()
 
     def test(self, host, port):
+        """Test if a controller is up.
+
+        Keyword Arguments:
+        host -- host ip address at which controller is listening.
+        port -- port at which the controller is listening at `host` address.
+
+        """
         s = socket(AF_INET, SOCK_STREAM)
         result = s.connect_ex((host, port))
 
@@ -60,10 +73,23 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
             self.monitors.pop(host + ':' + str(port), None)
         s.close()
 
+    def stop_monitors(self):
+        for x in self.monitors:
+            x.stop_test()
+
 
 class Monitor(object):
     """Monitors each controller individually"""
     def __init__(self, host, port, test, callback_time=1000):
+        """Initialize Monitor
+
+        Keyword Arguments:
+        host -- host ip address at which controller is listening.
+        port -- port at which the controller is listening at `host` address.
+        test -- callback function to be called periodically.
+        callback_time -- time interval (in milliseconds) at which `test` is run.
+
+        """
         super(Monitor, self).__init__()
         self.host = host
         self.port = port
