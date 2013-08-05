@@ -69,10 +69,13 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
 
         if result != 0:
             self.log.info("Controller listening at %s:%s died", host, port)
-            self.controllers.pop(host + ':' + str(port), None)
-            self.monitors[host + ':' + str(port)].stop_test()
-            self.monitors.pop(host + ':' + str(port), None)
+            self.handle_controller_death(host, port)
         s.close()
+
+    def handle_controller_death(self, host, port):
+        self.controllers.pop(host + ':' + str(port), None)
+        self.monitors[host + ':' + str(port)].stop_test()
+        self.monitors.pop(host + ':' + str(port), None)
 
     def stop_monitors(self):
         for x in self.monitors:
