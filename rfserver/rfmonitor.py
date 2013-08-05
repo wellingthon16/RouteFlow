@@ -64,6 +64,7 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
 
         """
         s = socket(AF_INET, SOCK_STREAM)
+        s.setblocking(0)
         result = s.connect_ex((host, port))
 
         if result != 0:
