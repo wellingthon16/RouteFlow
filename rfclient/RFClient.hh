@@ -1,10 +1,12 @@
+#ifndef RFCLIENT_HH
+#define RFCLIENT_HH
+
 #include <net/if.h>
 #include <map>
 #include <vector>
+#include <string>
 
 #include "ipc/IPC.h"
-#include "ipc/MongoIPC.h"
-#include "ipc/RFProtocol.h"
 #include "ipc/RFProtocolFactory.h"
 #include "FlowTable.h"
 #include "PortMapper.hh"
@@ -29,9 +31,11 @@ class RFClient : private RFProtocolFactory, private IPCMessageProcessor,
 
         void startFlowTable();
         void startPortMapper(vector<Interface>);
-        bool process(const string &from, const string &to, const string &channel, IPCMessage& msg);
+        bool process(const string &from, const string &to,
+                     const string &channel, IPCMessage& msg);
 
         int set_hwaddr_byname(const char * ifname, uint8_t hwaddr[], int16_t flags);
         uint32_t get_port_number(string ifName);
         vector<Interface> load_interfaces();
 };
+#endif /* RFCLIENT_HH */

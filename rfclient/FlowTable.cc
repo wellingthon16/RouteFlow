@@ -378,7 +378,7 @@ int FlowTable::updateRouteTable(struct nlmsghdr *n) {
                 struct rtattr *attr = RTNH_DATA(rtnhp_ptr);
 
                 for (; RTA_OK(attr, attrlen); attr = RTA_NEXT(attr, attrlen))
-                    if ((attr->rta_type == RTA_GATEWAY)) {
+                    if (attr->rta_type == RTA_GATEWAY) {
                         if (rta_to_ip(rtmsg_ptr->rtm_family, RTA_DATA(attr),
                                       rentry->gateway) < 0) {
                             return 0;

@@ -1,17 +1,16 @@
-#include <sys/ioctl.h>
-#include <net/if_arp.h>
-#include <arpa/inet.h>
-#include <netpacket/packet.h>
 #include <ifaddrs.h>
 #include <syslog.h>
+#include <arpa/inet.h>
+#include <net/if_arp.h>
+#include <sys/ioctl.h>
+
 #include <cstdlib>
 #include <boost/thread.hpp>
-#include <iomanip>
 
-#include "RFClient.hh"
-#include "converter.h"
 #include "defs.h"
-#include "FlowTable.h"
+#include "ipc/MongoIPC.h"
+#include "ipc/RFProtocol.h"
+#include "RFClient.hh"
 
 using namespace std;
 
@@ -53,11 +52,13 @@ uint64_t get_interface_id(const char *ifname) {
     uint64_t id;
     stringstream hexmac;
 
-    if (get_hwaddr_byname(ifname, mac) == -1)
+    if (get_hwaddr_byname(ifname, mac) == -1) {
         return 0;
+    }
 
-    for (int i = 0; i < 6; i++)
-        hexmac << std::hex << setfill ('0') << setw (2) << (int) mac[i];
+    for (int i = 0; i < 6; i++) {
+        hexmac << std::hex << setfill('0') << setw(2) << (int)mac[i];
+    }
     hexmac >> id;
     return id;
 }
@@ -76,12 +77,13 @@ bool RFClient::findInterface(const char *ifName, Interface *dst) {
 
 RFClient::RFClient(uint64_t id, const string &address) {
     this->id = id;
-    syslog(LOG_INFO, "Starting RFClient (vm_id=%s)", to_string<uint64_t>(this->id).c_str());
-    ipc = (IPCMessageService*) new MongoIPCMessageService(address, MONGO_DB_NAME, to_string<uint64_t>(this->id));
 
-    vector<Interface>::iterator it;
+    string id_str = to_string<uint64_t>(id);
+    syslog(LOG_INFO, "Starting RFClient (vm_id=%s)", id_str.c_str());
+    ipc = new MongoIPCMessageService(address, MONGO_DB_NAME, id_str);
+
     vector<Interface> ifaces = this->load_interfaces();
-
+    vector<Interface>::iterator it;
     for (it = ifaces.begin(); it != ifaces.end(); it++) {
         this->ifacesMap[it->name] = *it;
         this->interfaces[it->port] = &this->ifacesMap[it->name];
@@ -108,12 +110,13 @@ void RFClient::startPortMapper(vector<Interface> ifaces) {
     t.detach();
 }
 
-bool RFClient::process(const string &, const string &, const string &, IPCMessage& msg) {
+bool RFClient::process(const string &, const string &, const string &,
+                       IPCMessage& msg) {
     int type = msg.get_type();
     if (type == PORT_CONFIG) {
         boost::lock_guard<boost::mutex> lock(this->ifMutex);
 
-        PortConfig *config = dynamic_cast<PortConfig*>(&msg);
+        PortConfig *config = static_cast<PortConfig*>(&msg);
         uint32_t vm_port = config->get_vm_port();
         uint32_t operation_id = config->get_operation_id();
 
@@ -142,7 +145,8 @@ bool RFClient::process(const string &, const string &, const string &, IPCMessag
 }
 
 /* Set the MAC address of the interface. */
-int RFClient::set_hwaddr_byname(const char * ifname, uint8_t hwaddr[], int16_t flags) {
+int RFClient::set_hwaddr_byname(const char * ifname, uint8_t hwaddr[],
+                                int16_t flags) {
     struct ifreq ifr;
     int sock;
 
@@ -197,7 +201,7 @@ vector<Interface> RFClient::load_interfaces() {
 
     if (getifaddrs(&ifaddr) == -1) {
         perror("getifaddrs");
-        exit( EXIT_FAILURE);
+        exit(EXIT_FAILURE);
     }
 
     for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
@@ -233,39 +237,38 @@ int main(int argc, char* argv[]) {
 
     while ((c = getopt (argc, argv, "n:i:a:")) != -1)
         switch (c) {
-            case 'n':
-                fprintf (stderr, "Custom naming not supported yet.");
+        case 'n':
+            fprintf(stderr, "Custom naming not supported yet.");
+            exit(EXIT_FAILURE);
+            /* TODO: support custom naming for VMs.
+            if (!id.empty()) {
+                fprintf (stderr, "-i is already defined");
                 exit(EXIT_FAILURE);
-                /* TODO: support custom naming for VMs.
-                if (!id.empty()) {
-                    fprintf (stderr, "-i is already defined");
-                    exit(EXIT_FAILURE);
-                }
-                id = optarg;
-                */
-                break;
-            case 'i':
-                if (!id.empty()) {
-                    fprintf(stderr, "-n is already defined");
-                    exit(EXIT_FAILURE);
-                }
-                id = to_string<uint64_t>(get_interface_id(optarg));
-                break;
-            case 'a':
-                address = optarg;
-                break;
-            case '?':
-                if (optopt == 'n' || optopt == 'i' || optopt == 'a')
-                    fprintf(stderr, "Option -%c requires an argument.\n", optopt);
-                else if (isprint(optopt))
-                    fprintf(stderr, "Unknown option `-%c'.\n", optopt);
-                else
-                    fprintf(stderr, "Unknown option character `\\x%x'.\n", optopt);
-                return EXIT_FAILURE;
-            default:
-                abort();
+            }
+            id = optarg;
+            */
+            break;
+        case 'i':
+            if (!id.empty()) {
+                fprintf(stderr, "-n is already defined");
+                exit(EXIT_FAILURE);
+            }
+            id = to_string<uint64_t>(get_interface_id(optarg));
+            break;
+        case 'a':
+            address = optarg;
+            break;
+        case '?':
+            if (optopt == 'n' || optopt == 'i' || optopt == 'a')
+                fprintf(stderr, "Option -%c requires an argument.\n", optopt);
+            else if (isprint(optopt))
+                fprintf(stderr, "Unknown option `-%c'.\n", optopt);
+            else
+                fprintf(stderr, "Unknown option character `\\x%x'.\n", optopt);
+            return EXIT_FAILURE;
+        default:
+            abort();
         }
-
 
     openlog("rfclient", LOG_NDELAY | LOG_NOWAIT | LOG_PID, SYSLOGFACILITY);
     RFClient s(get_interface_id(DEFAULT_RFCLIENT_INTERFACE), address);
