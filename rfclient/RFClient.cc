@@ -13,8 +13,6 @@
 #include "defs.h"
 #include "FlowTable.h"
 
-#define BUFFER_SIZE 23 /* Mapping packet size. */
-
 using namespace std;
 
 /* Get the MAC address of the interface. */
@@ -81,12 +79,19 @@ RFClient::RFClient(uint64_t id, const string &address) {
     }
 
     this->startFlowTable();
+    this->startPortMapper(ifaces);
 
     ipc->listen(RFCLIENT_RFSERVER_CHANNEL, this, this, true);
 }
 
 void RFClient::startFlowTable() {
     boost::thread t(&FlowTable::start, this->id, this->ifacesMap, this->ipc);
+    t.detach();
+}
+
+void RFClient::startPortMapper(vector<Interface> ifaces) {
+    this->portMapper = new PortMapper(this->id, ifaces);
+    boost::thread t(*this->portMapper);
     t.detach();
 }
 
@@ -98,10 +103,8 @@ bool RFClient::process(const string &, const string &, const string &, IPCMessag
         uint32_t operation_id = config->get_operation_id();
 
         if (operation_id == 0) {
-            syslog(LOG_INFO,
-                   "Received port configuration (vm_port=%d)",
+            syslog(LOG_WARNING, "Received deprecated PortConfig (vm_port=%d)",
                    vm_port);
-            send_port_map(vm_port);
         }
         else if (operation_id == 1) {
             syslog(LOG_INFO, "Received port reset (vm_port=%d)", vm_port);
@@ -111,67 +114,6 @@ bool RFClient::process(const string &, const string &, const string &, IPCMessag
         return false;
 
     return true;
-}
-
-int RFClient::send_packet(const char ethName[], uint64_t vm_id, uint8_t port) {
-    char buffer[BUFFER_SIZE];
-    uint16_t ethType;
-    struct ifreq req;
-    struct sockaddr_ll sll;
-    uint8_t srcAddress[IFHWADDRLEN];
-    uint8_t dstAddress[IFHWADDRLEN] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-
-    int SockFd = socket(PF_PACKET, SOCK_RAW, htons(RF_ETH_PROTO));
-
-    strcpy(req.ifr_name, ethName);
-
-    if (ioctl(SockFd, SIOCGIFFLAGS, &req) < 0) {
-        fprintf(stderr, "ERROR! ioctl() call has failed: %s\n", strerror(errno));
-        exit(1);
-    }
-
-    /* If the interface is down we can't send the packet. */
-    printf("FLAG %d\n", req.ifr_flags & IFF_UP);
-    if (!(req.ifr_flags & IFF_UP))
-        return -1;
-
-    /* Get the interface index. */
-    if (ioctl(SockFd, SIOCGIFINDEX, &req) < 0) {
-        fprintf(stderr, "ERROR! ioctl() call has failed: %s\n", strerror(errno));
-        exit(1);
-    }
-
-    int ifindex = req.ifr_ifindex;
-
-    int addrLen = sizeof(struct sockaddr_ll);
-
-    if (ioctl(SockFd, SIOCGIFHWADDR, &req) < 0) {
-        fprintf(stderr, "ERROR! ioctl() call has failed: %s\n", strerror(errno));
-        exit(1);
-    }
-    int i;
-    for (i = 0; i < IFHWADDRLEN; i++)
-        srcAddress[i] = (uint8_t) req.ifr_hwaddr.sa_data[i];
-
-    memset(&sll, 0, sizeof(struct sockaddr_ll));
-    sll.sll_family = PF_PACKET;
-    sll.sll_ifindex = ifindex;
-
-    if (bind(SockFd, (struct sockaddr *) &sll, addrLen) < 0) {
-        fprintf(stderr, "ERROR! bind() call has failed: %s\n", strerror(errno));
-        exit(1);
-    }
-
-    memset(buffer, 0, BUFFER_SIZE);
-
-    memcpy((void *) buffer, (void *) dstAddress, IFHWADDRLEN);
-    memcpy((void *) (buffer + IFHWADDRLEN), (void *) srcAddress, IFHWADDRLEN);
-    ethType = htons(RF_ETH_PROTO);
-    memcpy((void *) (buffer + 2 * IFHWADDRLEN), (void *) &ethType, sizeof(uint16_t));
-    memcpy((void *) (buffer + 14), (void *) &vm_id, sizeof(uint64_t));
-    memcpy((void *) (buffer + 22), (void *) &port, sizeof(uint8_t));
-    return (sendto(SockFd, buffer, BUFFER_SIZE, 0, (struct sockaddr *) &sll, (socklen_t) addrLen));
-
 }
 
 /* Set the MAC address of the interface. */
@@ -256,16 +198,6 @@ vector<Interface> RFClient::load_interfaces() {
 
     freeifaddrs(ifaddr);
     return result;
-}
-
-void RFClient::send_port_map(uint32_t port) {
-    Interface i = this->interfaces[port];
-    if (send_packet(i.name.c_str(), this->id, i.port) == -1)
-        syslog(LOG_INFO, "Error sending mapping packet (vm_port=%d)",
-               i.port);
-    else
-        syslog(LOG_INFO, "Mapping packet was sent to RFVS (vm_port=%d)",
-               i.port);
 }
 
 int main(int argc, char* argv[]) {

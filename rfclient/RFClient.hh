@@ -7,6 +7,7 @@
 #include "ipc/RFProtocol.h"
 #include "ipc/RFProtocolFactory.h"
 #include "FlowTable.h"
+#include "PortMapper.hh"
 
 class RFClient : private RFProtocolFactory, private IPCMessageProcessor {
     public:
@@ -14,6 +15,7 @@ class RFClient : private RFProtocolFactory, private IPCMessageProcessor {
 
     private:
         FlowTable* flowTable;
+        PortMapper* portMapper;
         IPCMessageService* ipc;
         uint64_t id;
 
@@ -23,11 +25,10 @@ class RFClient : private RFProtocolFactory, private IPCMessageProcessor {
         uint8_t hwaddress[IFHWADDRLEN];
 
         void startFlowTable();
+        void startPortMapper(vector<Interface>);
         bool process(const string &from, const string &to, const string &channel, IPCMessage& msg);
 
-        int send_packet(const char ethName[], uint64_t vm_id, uint8_t port);
         int set_hwaddr_byname(const char * ifname, uint8_t hwaddr[], int16_t flags);
         uint32_t get_port_number(string ifName);
         vector<Interface> load_interfaces();
-        void send_port_map(uint32_t port);
 };
