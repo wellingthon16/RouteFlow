@@ -44,7 +44,6 @@ struct rtnl_handle FlowTable::rthNeigh;
 #endif /* FPM_ENABLED */
 
 map<string, Interface> FlowTable::interfaces;
-vector<uint32_t>* FlowTable::down_ports;
 IPCMessageService* FlowTable::ipc;
 uint64_t FlowTable::vm_id;
 
@@ -71,11 +70,10 @@ void FlowTable::RTPollingCb() {
 #endif /* FPM_ENABLED */
 
 void FlowTable::start(uint64_t vm_id, map<string, Interface> interfaces,
-                      IPCMessageService* ipc, vector<uint32_t>* down_ports) {
+                      IPCMessageService* ipc) {
     FlowTable::vm_id = vm_id;
     FlowTable::interfaces = interfaces;
     FlowTable::ipc = ipc;
-    FlowTable::down_ports = down_ports;
 
     rtnl_open(&rthNeigh, RTMGRP_NEIGH);
     HTPolling = boost::thread(&FlowTable::HTPollingCb);
@@ -471,7 +469,7 @@ int FlowTable::initiateND(const char *hostAddr) {
  */
 int FlowTable::resolveGateway(const IPAddress& gateway,
                               const Interface& iface) {
-    if (is_port_down(iface.port)) {
+    if (!iface.active) {
         return -1;
     }
 
@@ -510,14 +508,6 @@ const MACAddress& FlowTable::findHost(const IPAddress& host) {
     }
 
     return FlowTable::MAC_ADDR_NONE;
-}
-
-bool FlowTable::is_port_down(uint32_t port) {
-    vector<uint32_t>::iterator it;
-    for (it=down_ports->begin() ; it < down_ports->end(); it++)
-        if (*it == port)
-            return true;
-    return false;
 }
 
 int FlowTable::setEthernet(RouteMod& rm, const Interface& local_iface,
@@ -588,7 +578,7 @@ int FlowTable::sendToHw(RouteModType mod, const HostEntry& he) {
 int FlowTable::sendToHw(RouteModType mod, const IPAddress& addr,
                          const IPAddress& mask, const Interface& local_iface,
                          const MACAddress& gateway) {
-    if (is_port_down(local_iface.port)) {
+    if (!local_iface.active) {
         fprintf(stderr, "Cannot send RouteMod for down port\n");
         return -1;
     }
@@ -649,7 +639,7 @@ void FlowTable::updateNHLFE(nhlfe_msg_t *nhlfe_msg) {
         iface = iter->second.interface;
     }
 
-    if (is_port_down(iface.port)) {
+    if (!iface.active) {
         std::cerr << "Cannot send route via inactive interface" << std::endl;
         return;
     }

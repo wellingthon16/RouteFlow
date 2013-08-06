@@ -87,7 +87,7 @@ RFClient::RFClient(uint64_t id, const string &address) {
 }
 
 void RFClient::startFlowTable() {
-    boost::thread t(&FlowTable::start, this->id, this->ifacesMap, this->ipc, &(this->down_ports));
+    boost::thread t(&FlowTable::start, this->id, this->ifacesMap, this->ipc);
     t.detach();
 }
 
@@ -102,17 +102,10 @@ bool RFClient::process(const string &, const string &, const string &, IPCMessag
             syslog(LOG_INFO,
                    "Received port configuration (vm_port=%d)",
                    vm_port);
-            vector<uint32_t>::iterator it;
-            for (it=down_ports.begin(); it < down_ports.end(); it++)
-                if (*it == vm_port)
-                    down_ports.erase(it);
             send_port_map(vm_port);
         }
         else if (operation_id == 1) {
-            syslog(LOG_INFO,
-                   "Received port reset (vm_port=%d)",
-                   vm_port);
-            down_ports.push_back(vm_port);
+            syslog(LOG_INFO, "Received port reset (vm_port=%d)", vm_port);
         }
     }
     else

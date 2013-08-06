@@ -32,7 +32,8 @@ class FlowTable {
 
         static void clear();
         static void interrupt();
-        static void start(uint64_t vm_id, map<string, Interface> interfaces, IPCMessageService* ipc, vector<uint32_t>* down_ports);
+        static void start(uint64_t vm_id, map<string, Interface> interfaces,
+                          IPCMessageService* ipc);
         static void print_test();
 
         static int updateHostTable(const struct sockaddr_nl*,
@@ -56,7 +57,6 @@ class FlowTable {
 
         static const MACAddress MAC_ADDR_NONE;
         static map<string, Interface> interfaces;
-        static vector<uint32_t>* down_ports;
         static IPCMessageService* ipc;
         static uint64_t vm_id;
 
