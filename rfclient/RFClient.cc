@@ -69,15 +69,15 @@ RFClient::RFClient(uint64_t id, const string &address) {
     syslog(LOG_INFO, "Starting RFClient (vm_id=%s)", to_string<uint64_t>(this->id).c_str());
     ipc = (IPCMessageService*) new MongoIPCMessageService(address, MONGO_DB_NAME, to_string<uint64_t>(this->id));
 
-    this->load_interfaces();
+    vector<Interface>::iterator it;
+    vector<Interface> ifaces = this->load_interfaces();
 
-    for (map<int, Interface>::iterator it = this->interfaces.begin() ; it != this->interfaces.end(); it++) {
-        Interface i = it->second;
-        ifacesMap[i.name] = i;
+    for (it = ifaces.begin(); it != ifaces.end(); it++) {
+        ifacesMap[it->name] = *it;
 
-        PortRegister msg(this->id, i.port, i.hwaddress);
+        PortRegister msg(this->id, it->port, it->hwaddress);
         this->ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, msg);
-        syslog(LOG_INFO, "Registering client port (vm_port=%d)", i.port);
+        syslog(LOG_INFO, "Registering client port (vm_port=%d)", it->port);
     }
 
     this->startFlowTable();
@@ -217,45 +217,45 @@ int RFClient::set_hwaddr_byname(const char * ifname, uint8_t hwaddr[], int16_t f
     return 0;
 }
 
-/* Get all names of the interfaces in the system. */
-void RFClient::load_interfaces() {
+uint32_t RFClient::get_port_number(string ifName) {
+    size_t pos = ifName.find_first_of("123456789");
+    string port_num = ifName.substr(pos, ifName.length() - pos + 1);
+    return atoi(port_num.c_str());
+}
+
+/* Gather all of the interfaces on the system. */
+vector<Interface> RFClient::load_interfaces() {
     struct ifaddrs *ifaddr, *ifa;
-    int family;
-    int intfNum;
+    vector<Interface> result;
 
     if (getifaddrs(&ifaddr) == -1) {
         perror("getifaddrs");
         exit( EXIT_FAILURE);
     }
 
-    /* Walk through linked list, maintaining head pointer so we
-     can free list later. */
-    intfNum = 0;
     for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-        family = ifa->ifa_addr->sa_family;
+        int family = ifa->ifa_addr->sa_family;
 
-        if (family == AF_PACKET && strcmp(ifa->ifa_name, "eth0") != 0 && strcmp(ifa->ifa_name, "lo") != 0) {
-	        get_hwaddr_byname(ifa->ifa_name, hwaddress);
-	        string ifaceName = ifa->ifa_name;
-	        size_t pos = ifaceName.find_first_of("123456789");
-	        string port_num = ifaceName.substr(pos, ifaceName.length() - pos + 1);
-	        uint32_t port_id = atoi(port_num.c_str());
+        if (family == AF_PACKET && strcmp(ifa->ifa_name, "eth0") != 0
+            && strcmp(ifa->ifa_name, "lo") != 0) {
+            string ifaceName = ifa->ifa_name;
+            get_hwaddr_byname(ifa->ifa_name, hwaddress);
 
-	        Interface interface;
-	        interface.port = port_id;
-	        interface.name = ifaceName;
-	        interface.hwaddress = MACAddress(hwaddress);
-	        interface.active = true;
+            Interface interface;
+            interface.name = ifaceName;
+            interface.port = get_port_number(ifaceName);
+            interface.hwaddress = MACAddress(hwaddress);
+            interface.active = false;
 
-	        printf("Loaded interface %s\n", interface.name.c_str());
+            printf("Loaded interface %s\n", interface.name.c_str());
+            syslog(LOG_INFO, "Loaded interface %s\n", interface.name.c_str());
 
-	        this->interfaces[interface.port] = interface;
-	        intfNum++;
+            result.push_back(interface);
         }
     }
 
-    /* Free list. */
     freeifaddrs(ifaddr);
+    return result;
 }
 
 void RFClient::send_port_map(uint32_t port) {

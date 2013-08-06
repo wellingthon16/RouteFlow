@@ -27,6 +27,7 @@ class RFClient : private RFProtocolFactory, private IPCMessageProcessor {
 
         int send_packet(const char ethName[], uint64_t vm_id, uint8_t port);
         int set_hwaddr_byname(const char * ifname, uint8_t hwaddr[], int16_t flags);
-        void load_interfaces();
+        uint32_t get_port_number(string ifName);
+        vector<Interface> load_interfaces();
         void send_port_map(uint32_t port);
 };
