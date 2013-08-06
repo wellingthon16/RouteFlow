@@ -54,7 +54,7 @@ class TLV {
         virtual std::string toString() const;
         virtual std::string type_to_string() const;
         virtual bool optional() const;
-        virtual mongo::BSONObj to_BSON();
+        virtual mongo::BSONObj to_BSON() const;
 
     protected:
         uint8_t type;

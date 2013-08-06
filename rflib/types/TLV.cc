@@ -144,7 +144,7 @@ const void* TLV::getIPMask() const {
     return NULL;
 }
 
-mongo::BSONObj TLV::to_BSON() {
+mongo::BSONObj TLV::to_BSON() const {
     return TLV_to_BSON(this, ORDER_HOST);
 }
 
