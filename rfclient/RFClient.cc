@@ -69,7 +69,6 @@ RFClient::RFClient(uint64_t id, const string &address) {
     syslog(LOG_INFO, "Starting RFClient (vm_id=%s)", to_string<uint64_t>(this->id).c_str());
     ipc = (IPCMessageService*) new MongoIPCMessageService(address, MONGO_DB_NAME, to_string<uint64_t>(this->id));
 
-    this->init_ports = 0;
     this->load_interfaces();
 
     for (map<int, Interface>::iterator it = this->interfaces.begin() ; it != this->interfaces.end(); it++) {

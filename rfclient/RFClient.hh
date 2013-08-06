@@ -21,7 +21,6 @@ class RFClient : private RFProtocolFactory, private IPCMessageProcessor {
         map<int, Interface> interfaces;
 
         uint8_t hwaddress[IFHWADDRLEN];
-        int init_ports;
 
         void startFlowTable();
         bool process(const string &from, const string &to, const string &channel, IPCMessage& msg);
