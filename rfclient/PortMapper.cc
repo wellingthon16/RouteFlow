@@ -40,10 +40,10 @@ void PortMapper::operator()() {
  */
 void PortMapper::send_port_map(Interface &iface) {
     if (send_packet(iface.name.c_str(), iface.port) == -1)
-        syslog(LOG_INFO, "Error sending mapping packet (vm_port=%d)",
+        syslog(LOG_NOTICE, "Error sending mapping packet (vm_port=%d)",
                iface.port);
     else
-        syslog(LOG_INFO, "Mapping packet was sent to RFVS (vm_port=%d)",
+        syslog(LOG_DEBUG, "Mapping packet was sent to RFVS (vm_port=%d)",
                iface.port);
 }
 
@@ -55,6 +55,7 @@ void PortMapper::send_port_map(Interface &iface) {
  */
 int PortMapper::send_packet(const char ethName[], uint8_t port) {
     char buffer[BUFFER_SIZE];
+    char error[BUFSIZ];
     uint16_t ethType;
     struct ifreq req;
     struct sockaddr_ll sll;
@@ -66,8 +67,8 @@ int PortMapper::send_packet(const char ethName[], uint8_t port) {
     strcpy(req.ifr_name, ethName);
 
     if (ioctl(SockFd, SIOCGIFFLAGS, &req) < 0) {
-        fprintf(stderr, "ERROR! ioctl() call has failed: %s\n",
-                strerror(errno));
+        strerror_r(errno, error, BUFSIZ);
+        syslog(LOG_CRIT, "ioctl(SIOCGIFFLAGS): %s", error);
         exit(1);
     }
 
@@ -78,8 +79,8 @@ int PortMapper::send_packet(const char ethName[], uint8_t port) {
 
     /* Get the interface index. */
     if (ioctl(SockFd, SIOCGIFINDEX, &req) < 0) {
-        fprintf(stderr, "ERROR! ioctl() call has failed: %s\n",
-                strerror(errno));
+        strerror_r(errno, error, BUFSIZ);
+        syslog(LOG_CRIT, "ioctl(SIOCGIFINDEX): %s", error);
         exit(1);
     }
 
@@ -88,8 +89,8 @@ int PortMapper::send_packet(const char ethName[], uint8_t port) {
     int addrLen = sizeof(struct sockaddr_ll);
 
     if (ioctl(SockFd, SIOCGIFHWADDR, &req) < 0) {
-        fprintf(stderr, "ERROR! ioctl() call has failed: %s\n",
-                strerror(errno));
+        strerror_r(errno, error, BUFSIZ);
+        syslog(LOG_CRIT, "ioctl(SIOCGIFHWADDR): %s", error);
         exit(1);
     }
     int i;
@@ -101,8 +102,8 @@ int PortMapper::send_packet(const char ethName[], uint8_t port) {
     sll.sll_ifindex = ifindex;
 
     if (bind(SockFd, (struct sockaddr *) &sll, addrLen) < 0) {
-        fprintf(stderr, "ERROR! bind() call has failed: %s\n",
-                strerror(errno));
+        strerror_r(errno, error, BUFSIZ);
+        syslog(LOG_CRIT, "bind(): %s", error);
         exit(1);
     }
 

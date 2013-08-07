@@ -32,7 +32,9 @@ int get_hwaddr_byname(const char * ifname, uint8_t hwaddr[]) {
     ifr.ifr_name[sizeof(ifr.ifr_name) - 1] = '\0';
 
     if (-1 == ioctl(sock, SIOCGIFHWADDR, &ifr)) {
-        perror("ioctl(SIOCGIFHWADDR) ");
+        char error[BUFSIZ];
+        strerror_r(errno, error, BUFSIZ);
+        syslog(LOG_WARNING, "ioctl(SIOCGIFHWADDR): %s", error);
         return -1;
     }
 
@@ -147,6 +149,7 @@ bool RFClient::process(const string &, const string &, const string &,
 /* Set the MAC address of the interface. */
 int RFClient::set_hwaddr_byname(const char * ifname, uint8_t hwaddr[],
                                 int16_t flags) {
+    char error[BUFSIZ];
     struct ifreq ifr;
     int sock;
 
@@ -164,7 +167,8 @@ int RFClient::set_hwaddr_byname(const char * ifname, uint8_t hwaddr[],
     ifr.ifr_ifru.ifru_flags = flags & (~IFF_UP);
 
     if (-1 == ioctl(sock, SIOCSIFFLAGS, &ifr)) {
-        perror("ioctl(SIOCSIFFLAGS) ");
+        strerror_r(errno, error, BUFSIZ);
+        syslog(LOG_WARNING, "ioctl(SIOCSIFFLAGS): %s", error);
         return -1;
     }
 
@@ -172,14 +176,16 @@ int RFClient::set_hwaddr_byname(const char * ifname, uint8_t hwaddr[],
     std::memcpy(ifr.ifr_ifru.ifru_hwaddr.sa_data, hwaddr, IFHWADDRLEN);
 
     if (-1 == ioctl(sock, SIOCSIFHWADDR, &ifr)) {
-        perror("ioctl(SIOCSIFHWADDR) ");
+        strerror_r(errno, error, BUFSIZ);
+        syslog(LOG_WARNING, "ioctl(SIOCSIFHWADDR): %s", error);
         return -1;
     }
 
     ifr.ifr_ifru.ifru_flags = flags | IFF_UP;
 
     if (-1 == ioctl(sock, SIOCSIFFLAGS, &ifr)) {
-        perror("ioctl(SIOCSIFFLAGS) ");
+        strerror_r(errno, error, BUFSIZ);
+        syslog(LOG_WARNING, "ioctl(SIOCSIFFLAGS): %s", error);
         return -1;
     }
 
@@ -200,7 +206,9 @@ vector<Interface> RFClient::load_interfaces() {
     vector<Interface> result;
 
     if (getifaddrs(&ifaddr) == -1) {
-        perror("getifaddrs");
+        char error[BUFSIZ];
+        strerror_r(errno, error, BUFSIZ);
+        syslog(LOG_CRIT, "getifaddrs: %s", error);
         exit(EXIT_FAILURE);
     }
 
