@@ -186,12 +186,6 @@ int FlowTable::getInterface(const char *intf, const char *type,
         return -1;
     }
 
-    if (!temp.active) {
-        fprintf(stderr, "Interface %s inactive, dropping %s entry\n",
-                intf, type);
-        return -1;
-    }
-
     *iface = temp;
     return 0;
 }
