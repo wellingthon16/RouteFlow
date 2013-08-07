@@ -54,6 +54,9 @@ list<RouteEntry> FlowTable::routeTable;
 boost::mutex hostTableMutex;
 map<string, HostEntry> FlowTable::hostTable;
 
+boost::mutex drMutex;
+map<string, RouteEntry> FlowTable::deletedRoutes;
+
 boost::mutex ndMutex;
 map<string, int> FlowTable::pendingNeighbours;
 
@@ -122,6 +125,15 @@ void FlowTable::GWResolverCb() {
             if (pr.second == *iter) {
                 existingEntry = true;
                 break;
+            }
+        }
+
+        if (FlowTable::deletedRoutes.count(pr.second.toString()) > 0) {
+            boost::lock_guard<boost::mutex> lock(drMutex);
+            deletedRoutes.erase(pr.second.toString());
+            if (pr.first != RMT_DELETE) {
+                syslog(LOG_INFO, "Removing cached route before insertion.");
+                continue;
             }
         }
 
@@ -408,11 +420,16 @@ int FlowTable::updateRouteTable(struct nlmsghdr *n) {
                    net.c_str(), mask.c_str(), gw.c_str());
             FlowTable::pendingRoutes.push(PendingRoute(RMT_ADD, *rentry));
             break;
-        case RTM_DELROUTE:
+        case RTM_DELROUTE: {
+            boost::lock_guard<boost::mutex> lock(drMutex);
+            pair<string, RouteEntry> pair(rentry->toString(), *rentry);
+
             syslog(LOG_INFO, "netlink->RTM_DELROUTE: net=%s, mask=%s, gw=%s",
                    net.c_str(), mask.c_str(), gw.c_str());
             FlowTable::pendingRoutes.push(PendingRoute(RMT_DELETE, *rentry));
+            FlowTable::deletedRoutes.insert(pair);
             break;
+        }
     }
 
     return 0;

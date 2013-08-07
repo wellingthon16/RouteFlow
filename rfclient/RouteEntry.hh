@@ -17,6 +17,11 @@ class RouteEntry {
                 (this->netmask == other.netmask) and
                 (this->interface == other.interface);
         }
+
+        string toString() const {
+            return this->address.toString() + "/" + this->netmask.toString()
+                    + " via " + this->netmask.toString();
+        }
 };
 
 #endif /* ROUTEENTRY_HH */

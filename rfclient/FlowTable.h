@@ -72,6 +72,7 @@ class FlowTable {
 
         static SyncQueue< std::pair<RouteModType,RouteEntry> > pendingRoutes;
         static list<RouteEntry> routeTable;
+        static map<string, RouteEntry> deletedRoutes;
         static map<string, HostEntry> hostTable;
         static map<string, int> pendingNeighbours;
 
