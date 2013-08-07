@@ -40,4 +40,19 @@ class Interface {
         }
 };
 
+/**
+ * Abstract class InterfaceMap. Subclasses can implement this functionality
+ * to provide access to Interfaces by name.
+ */
+class InterfaceMap {
+    public:
+        /**
+         * Searches for an interface matching the given name. If it exists,
+         * the interface is copied into *dst.
+         *
+         * Returns true on success, or false on failure.
+         */
+        virtual bool findInterface(const char *ifName, Interface *dst) = 0;
+};
+
 #endif /* INTERFACE_HH */

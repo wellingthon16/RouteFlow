@@ -43,7 +43,7 @@ struct rtnl_handle FlowTable::rthNeigh;
   struct rtnl_handle FlowTable::rth;
 #endif /* FPM_ENABLED */
 
-map<string, Interface> FlowTable::interfaces;
+InterfaceMap* FlowTable::ifMap;
 IPCMessageService* FlowTable::ipc;
 uint64_t FlowTable::vm_id;
 
@@ -69,11 +69,11 @@ void FlowTable::RTPollingCb() {
 }
 #endif /* FPM_ENABLED */
 
-void FlowTable::start(uint64_t vm_id, map<string, Interface> interfaces,
+void FlowTable::start(uint64_t vm_id, InterfaceMap *ifm,
                       IPCMessageService* ipc) {
     FlowTable::vm_id = vm_id;
-    FlowTable::interfaces = interfaces;
     FlowTable::ipc = ipc;
+    FlowTable::ifMap = ifm;
 
     rtnl_open(&rthNeigh, RTMGRP_NEIGH);
     HTPolling = boost::thread(&FlowTable::HTPollingCb);
@@ -178,22 +178,21 @@ void FlowTable::GWResolverCb() {
  * On error, prints to stderr with appropriate message and returns -1.
  */
 int FlowTable::getInterface(const char *intf, const char *type,
-                            Interface& iface) {
-    map<string, Interface>::iterator it = interfaces.find(intf);
-
-    if (it == interfaces.end()) {
+                            Interface *iface) {
+    Interface temp;
+    if (!ifMap->findInterface(intf, &temp)) {
         fprintf(stderr, "Interface %s not found, dropping %s entry\n",
                 intf, type);
         return -1;
     }
 
-    if (not it->second.active) {
+    if (!temp.active) {
         fprintf(stderr, "Interface %s inactive, dropping %s entry\n",
                 intf, type);
         return -1;
     }
 
-    iface = it->second;
+    *iface = temp;
     return 0;
 }
 
@@ -265,7 +264,7 @@ int FlowTable::updateHostTable(const struct sockaddr_nl *, struct nlmsghdr *n, v
     }
 
     hentry->hwaddress = MACAddress(mac);
-    if (getInterface(intf, "host", hentry->interface) != 0) {
+    if (getInterface(intf, "host", &hentry->interface) != 0) {
         return 0;
     }
 
@@ -396,7 +395,7 @@ int FlowTable::updateRouteTable(struct nlmsghdr *n) {
 
     rentry->netmask = IPAddress(IPV4, rtmsg_ptr->rtm_dst_len);
 
-    if (getInterface(intf, "route", rentry->interface) != 0) {
+    if (getInterface(intf, "route", &rentry->interface) != 0) {
         return 0;
     }
 

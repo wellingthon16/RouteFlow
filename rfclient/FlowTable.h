@@ -32,8 +32,7 @@ class FlowTable {
 
         static void clear();
         static void interrupt();
-        static void start(uint64_t vm_id, map<string, Interface> interfaces,
-                          IPCMessageService* ipc);
+        static void start(uint64_t vm_id, InterfaceMap*, IPCMessageService*);
         static void print_test();
 
         static int updateHostTable(const struct sockaddr_nl*,
@@ -56,7 +55,7 @@ class FlowTable {
         static int lroute;
 
         static const MACAddress MAC_ADDR_NONE;
-        static map<string, Interface> interfaces;
+        static InterfaceMap* ifMap;
         static IPCMessageService* ipc;
         static uint64_t vm_id;
 
@@ -77,8 +76,8 @@ class FlowTable {
         static map<string, int> pendingNeighbours;
 
         static bool is_port_down(uint32_t port);
-        static int getInterface(const char *intf, const char *type,
-                                Interface& iface);
+        static int getInterface( const char *iface, const char *type,
+                                Interface*);
 
         static int initiateND(const char *hostAddr);
         static int resolveGateway(const IPAddress&, const Interface&);

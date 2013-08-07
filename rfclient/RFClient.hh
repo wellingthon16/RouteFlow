@@ -9,9 +9,11 @@
 #include "FlowTable.h"
 #include "PortMapper.hh"
 
-class RFClient : private RFProtocolFactory, private IPCMessageProcessor {
+class RFClient : private RFProtocolFactory, private IPCMessageProcessor,
+                 public InterfaceMap {
     public:
         RFClient(uint64_t id, const string &address);
+        bool findInterface(const char *ifName, Interface *dst);
 
     private:
         FlowTable* flowTable;
@@ -19,8 +21,9 @@ class RFClient : private RFProtocolFactory, private IPCMessageProcessor {
         IPCMessageService* ipc;
         uint64_t id;
 
+        boost::mutex ifMutex; /* This guards both of the maps below. */
         map<string, Interface> ifacesMap;
-        map<int, Interface> interfaces;
+        map<int, Interface*> interfaces;
 
         uint8_t hwaddress[IFHWADDRLEN];
 

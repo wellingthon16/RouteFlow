@@ -62,6 +62,18 @@ uint64_t get_interface_id(const char *ifname) {
     return id;
 }
 
+bool RFClient::findInterface(const char *ifName, Interface *dst) {
+    boost::lock_guard<boost::mutex> lock(this->ifMutex);
+
+    map<string, Interface>::iterator it = this->ifacesMap.find(ifName);
+    if (it == this->ifacesMap.end()) {
+        return false;
+    }
+
+    *dst = it->second;
+    return true;
+}
+
 RFClient::RFClient(uint64_t id, const string &address) {
     this->id = id;
     syslog(LOG_INFO, "Starting RFClient (vm_id=%s)", to_string<uint64_t>(this->id).c_str());
@@ -71,7 +83,8 @@ RFClient::RFClient(uint64_t id, const string &address) {
     vector<Interface> ifaces = this->load_interfaces();
 
     for (it = ifaces.begin(); it != ifaces.end(); it++) {
-        ifacesMap[it->name] = *it;
+        this->ifacesMap[it->name] = *it;
+        this->interfaces[it->port] = &this->ifacesMap[it->name];
 
         PortRegister msg(this->id, it->port, it->hwaddress);
         this->ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, msg);
@@ -85,7 +98,7 @@ RFClient::RFClient(uint64_t id, const string &address) {
 }
 
 void RFClient::startFlowTable() {
-    boost::thread t(&FlowTable::start, this->id, this->ifacesMap, this->ipc);
+    boost::thread t(&FlowTable::start, this->id, this, this->ipc);
     t.detach();
 }
 
@@ -98,6 +111,8 @@ void RFClient::startPortMapper(vector<Interface> ifaces) {
 bool RFClient::process(const string &, const string &, const string &, IPCMessage& msg) {
     int type = msg.get_type();
     if (type == PORT_CONFIG) {
+        boost::lock_guard<boost::mutex> lock(this->ifMutex);
+
         PortConfig *config = dynamic_cast<PortConfig*>(&msg);
         uint32_t vm_port = config->get_vm_port();
         uint32_t operation_id = config->get_operation_id();
