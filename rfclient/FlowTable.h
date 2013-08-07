@@ -20,6 +20,7 @@
 #include "Interface.hh"
 #include "RouteEntry.hh"
 #include "HostEntry.hh"
+#include "PendingRoute.hh"
 
 using namespace std;
 
@@ -70,7 +71,7 @@ class FlowTable {
         static struct rtnl_handle rth;
 #endif /* FPM_ENABLED */
 
-        static SyncQueue< std::pair<RouteModType,RouteEntry> > pendingRoutes;
+        static SyncQueue<PendingRoute> pendingRoutes;
         static list<RouteEntry> routeTable;
         static map<string, RouteEntry> deletedRoutes;
         static map<string, HostEntry> hostTable;

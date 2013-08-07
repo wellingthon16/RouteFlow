@@ -24,6 +24,7 @@ using namespace std;
 #define FULL_IPV6_PREFIX 128
 
 #define EMPTY_MAC_ADDRESS "00:00:00:00:00:00"
+#define ROUTE_COOLDOWN 5000 /* milliseconds */
 
 const MACAddress FlowTable::MAC_ADDR_NONE(EMPTY_MAC_ADDRESS);
 
@@ -48,7 +49,6 @@ InterfaceMap* FlowTable::ifMap;
 IPCMessageService* FlowTable::ipc;
 uint64_t FlowTable::vm_id;
 
-typedef std::pair<RouteModType,RouteEntry> PendingRoute;
 SyncQueue<PendingRoute> FlowTable::pendingRoutes;
 list<RouteEntry> FlowTable::routeTable;
 boost::mutex hostTableMutex;
@@ -114,43 +114,49 @@ void FlowTable::interrupt() {
 
 void FlowTable::GWResolverCb() {
     while (true) {
-        boost::this_thread::interruption_point();
-
         PendingRoute pr;
         FlowTable::pendingRoutes.wait_and_pop(pr);
+
+        /* If the head of the list is in no hurry to be resolved,
+         * then let's just sleep for a while until it's ready. */
+        if (boost::get_system_time() < pr.time) {
+            syslog(LOG_DEBUG, "GWResolver is getting sleepy...");
+            boost::this_thread::sleep(pr.time);
+        }
+        pr.advance(ROUTE_COOLDOWN);
 
         bool existingEntry = false;
         std::list<RouteEntry>::iterator iter = FlowTable::routeTable.begin();
         for (; iter != FlowTable::routeTable.end(); iter++) {
-            if (pr.second == *iter) {
+            if (pr.rentry == *iter) {
                 existingEntry = true;
                 break;
             }
         }
 
-        if (FlowTable::deletedRoutes.count(pr.second.toString()) > 0) {
+        if (FlowTable::deletedRoutes.count(pr.rentry.toString()) > 0) {
             boost::lock_guard<boost::mutex> lock(drMutex);
-            deletedRoutes.erase(pr.second.toString());
-            if (pr.first != RMT_DELETE) {
+            deletedRoutes.erase(pr.rentry.toString());
+            if (pr.type != RMT_DELETE) {
                 syslog(LOG_INFO, "Removing cached route before insertion.");
                 continue;
             }
         }
 
-        if (existingEntry && pr.first == RMT_ADD) {
+        if (existingEntry && pr.type == RMT_ADD) {
             syslog(LOG_INFO, "Received duplicate route add for route %s\n",
-                   pr.second.address.toString().c_str());
+                   pr.rentry.address.toString().c_str());
             continue;
         }
 
-        if (!existingEntry && pr.first == RMT_DELETE) {
+        if (!existingEntry && pr.type == RMT_DELETE) {
             syslog(LOG_INFO, "Received route removal for %s but route %s.\n",
-                   pr.second.address.toString().c_str(), "cannot be found");
+                   pr.rentry.address.toString().c_str(), "cannot be found");
             continue;
         }
 
-        const RouteEntry& re = pr.second;
-        if (pr.first != RMT_DELETE &&
+        const RouteEntry& re = pr.rentry;
+        if (pr.type != RMT_DELETE &&
                 findHost(re.address) == FlowTable::MAC_ADDR_NONE) {
             /* Host is unresolved. Attempt to resolve it. */
             if (resolveGateway(re.gateway, re.interface) < 0) {
@@ -165,7 +171,7 @@ void FlowTable::GWResolverCb() {
             }
         }
 
-        if (FlowTable::sendToHw(pr.first, pr.second) < 0) {
+        if (FlowTable::sendToHw(pr.type, pr.rentry) < 0) {
             syslog(LOG_WARNING, "An error occurred while pushing %s/%s.\n",
                    re.address.toString().c_str(),
                    re.netmask.toString().c_str());
@@ -173,13 +179,13 @@ void FlowTable::GWResolverCb() {
             continue;
         }
 
-        if (pr.first == RMT_ADD) {
-            FlowTable::routeTable.push_back(pr.second);
-        } else if (pr.first == RMT_DELETE) {
-            FlowTable::routeTable.remove(pr.second);
+        if (pr.type == RMT_ADD) {
+            FlowTable::routeTable.push_back(pr.rentry);
+        } else if (pr.type == RMT_DELETE) {
+            FlowTable::routeTable.remove(pr.rentry);
         } else {
             syslog(LOG_ERR, "Received unexpected RouteModType (%d)\n",
-                   pr.first);
+                   pr.type);
         }
     }
 }
