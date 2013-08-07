@@ -46,6 +46,11 @@ RMT_ADD = 0			# Add flow to datapath
 RMT_DELETE = 1			# Remove flow from datapath
 #RMT_MODIFY = 2		# Modify existing flow (Unimplemented)
 
+# Port Configuration Types
+PCT_MAP_REQUEST = 0     # (deprecated) Request for a mapping packet.
+PCT_RESET = 1           # Reset the client port to inactive.
+PCT_MAP_SUCCESS = 2     # Mapping was successful; port can be brought up.
+
 PC_MAP = 0
 PC_RESET = 1
 

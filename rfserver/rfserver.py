@@ -101,18 +101,11 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
         elif action == REGISTER_ASSOCIATED:
             entry.associate(vm_id, vm_port, eth_addr=eth_addr)
             self.rftable.set_entry(entry)
-            self.config_vm_port(vm_id, vm_port)
             self.log.info("Registering client port and associating to "
                           "datapath port (vm_id=%s, vm_port=%i, "
                           "eth_addr = %s, dp_id=%s, dp_port=%s)"
                           % (format_id(vm_id), vm_port, eth_addr,
                              format_id(entry.dp_id), entry.dp_port))
-
-    def config_vm_port(self, vm_id, vm_port):
-        self.ipc.send(RFCLIENT_RFSERVER_CHANNEL, str(vm_id),
-                      PortConfig(vm_id=vm_id, vm_port=vm_port, operation_id=0))
-        self.log.info("Asking client for mapping message for port "
-                      "(vm_id=%s, vm_port=%i)" % (format_id(vm_id), vm_port))
 
     # Handle RouteMod messages (type ROUTE_MOD)
     #
@@ -227,7 +220,6 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
         elif action == REGISTER_ASSOCIATED:
             entry.associate(dp_id, dp_port, ct_id)
             self.rftable.set_entry(entry)
-            self.config_vm_port(entry.vm_id, entry.vm_port)
             self.log.info("Registering datapath port and associating to "
                           "client port (dp_id=%s, dp_port=%i, vm_id=%s, "
                           "vm_port=%s)" % (format_id(dp_id), dp_port,
@@ -393,7 +385,8 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
         if vm_id is None:
             return
         self.ipc.send(RFCLIENT_RFSERVER_CHANNEL, str(vm_id),
-                      PortConfig(vm_id=vm_id, vm_port=vm_port, operation_id=1))
+                      PortConfig(vm_id=vm_id, vm_port=vm_port,
+                                 operation_id=PCT_RESET))
         self.log.info("Resetting client port (vm_id=%s, vm_port=%i)" %
                       (format_id(vm_id), vm_port))
 
@@ -408,6 +401,9 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
                                dp_id=entry.dp_id, dp_port=entry.dp_port,
                                vs_id=vs_id, vs_port=vs_port)
             self.ipc.send(RFSERVER_RFPROXY_CHANNEL, str(entry.ct_id), msg)
+            msg = PortConfig(vm_id=vm_id, vm_port=vm_port,
+                             operation_id=PCT_MAP_SUCCESS)
+            self.ipc.send(RFCLIENT_RFSERVER_CHANNEL, str(entry.vm_id), msg)
             self.log.info("Mapping client-datapath association "
                           "(vm_id=%s, vm_port=%i, dp_id=%s, "
                           "dp_port=%i, vs_id=%s, vs_port=%i)" %

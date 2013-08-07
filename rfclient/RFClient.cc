@@ -117,16 +117,26 @@ bool RFClient::process(const string &, const string &, const string &, IPCMessag
         uint32_t vm_port = config->get_vm_port();
         uint32_t operation_id = config->get_operation_id();
 
-        if (operation_id == 0) {
-            syslog(LOG_WARNING, "Received deprecated PortConfig (vm_port=%d)",
-                   vm_port);
-        }
-        else if (operation_id == 1) {
+        switch (operation_id) {
+        case PCT_MAP_REQUEST:
+            syslog(LOG_WARNING, "Received deprecated PortConfig (vm_port=%d) "
+                   "(type: %d)", vm_port, operation_id);
+            break;
+        case PCT_RESET:
             syslog(LOG_INFO, "Received port reset (vm_port=%d)", vm_port);
+            this->interfaces[vm_port]->active = false;
+            break;
+        case PCT_MAP_SUCCESS:
+            syslog(LOG_INFO, "Successfully mapped port(vm_port=%d)", vm_port);
+            this->interfaces[vm_port]->active = true;
+            break;
+        default:
+            syslog(LOG_WARNING, "Recieved unrecognised PortConfig message");
+            return false;
         }
-    }
-    else
+    } else {
         return false;
+    }
 
     return true;
 }

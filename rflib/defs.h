@@ -36,6 +36,12 @@ typedef enum route_mod_type {
 	//RMT_MODIFY		/* Modify existing flow (Unimplemented) */
 } RouteModType;
 
+typedef enum port_config_type {
+    PCT_MAP_REQUEST,    /* (deprecated) Request for a mapping packet. */
+    PCT_RESET,          /* Reset the client port to inactive. */
+    PCT_MAP_SUCCESS,    /* Mapping was successful; port can be brought up. */
+} PortModType;
+
 #define PC_MAP 0
 #define PC_RESET 1
 
