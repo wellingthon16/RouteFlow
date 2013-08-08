@@ -48,6 +48,8 @@ glob_t *glob = &glob_space;
 
 /*
  * create_listen_sock
+ *
+ * Returns 0 on success, or -1 on error.
  */
 int FPMServer::create_listen_sock(int port, int *sock_p) {
     char error[BUFSIZ];
@@ -58,38 +60,38 @@ int FPMServer::create_listen_sock(int port, int *sock_p) {
     sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (sock < 0) {
         strerror_r(errno, error, BUFSIZ);
-        syslog(LOG_ERR, "Failed to create socket: %s", error);
-        return 0;
+        syslog(LOG_ERR, "FPM Failed to create socket: %s", error);
+        return -1;
     }
 
     reuse = 1;
     if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse,
                      sizeof(reuse)) < 0) {
         strerror_r(errno, error, BUFSIZ);
-        syslog(LOG_WARNING, "Failed to set reuse addr option: %s", error);
+        syslog(LOG_WARNING, "FPM Failed to set reuse addr option: %s", error);
     }
 
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(INADDR_ANY );
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
     addr.sin_port = htons(port);
 
     if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
         strerror_r(errno, error, BUFSIZ);
-        syslog(LOG_ERR, "Failed to bind to port %d: %s", port, error);
+        syslog(LOG_ERR, "FPM Failed to bind to port %d: %s", port, error);
         close(sock);
-        return 0;
+        return -1;
     }
 
     if (listen(sock, 5)) {
         strerror_r(errno, error, BUFSIZ);
-        syslog(LOG_ERR, "Failed to listen on socket: %s", error);
+        syslog(LOG_ERR, "FPM Failed to listen on socket: %s", error);
         close(sock);
-        return 0;
+        return -1;
     }
 
     *sock_p = sock;
-    return 1;
+    return 0;
 }
 
 /*
@@ -102,18 +104,19 @@ int FPMServer::accept_conn(int listen_sock) {
     unsigned int client_len;
 
     while (1) {
-        syslog(LOG_INFO, "Waiting for client connection...");
+        syslog(LOG_INFO, "FPM Waiting for client connection...");
         client_len = sizeof(client_addr);
         sock = accept(listen_sock, (struct sockaddr *) &client_addr,
                         &client_len);
 
         if (sock >= 0) {
-            syslog(LOG_INFO, "Accepted client %s", inet_ntoa(client_addr.sin_addr));
+            syslog(LOG_INFO, "FPM Accepted client %s",
+                   inet_ntoa(client_addr.sin_addr));
             return sock;
         }
 
         strerror_r(errno, error, BUFSIZ);
-        syslog(LOG_ERR, "Failed to accept socket: %s", error);
+        syslog(LOG_ERR, "FPM Failed to accept socket: %s", error);
     }
 }
 
@@ -125,14 +128,14 @@ FPMServer::read_fpm_msg(char *buf, size_t buf_len) {
     char *cur, *end;
     int need_len, bytes_read, have_len;
     fpm_msg_hdr_t *hdr;
-    int reading_full_msg;
+    bool malformed_msg;
 
     end = buf + buf_len;
     cur = buf;
     hdr = (fpm_msg_hdr_t *) buf;
 
-    while (1) {
-        reading_full_msg = 0;
+    while (true) {
+        malformed_msg = true;
 
         have_len = cur - buf;
 
@@ -146,20 +149,20 @@ FPMServer::read_fpm_msg(char *buf, size_t buf_len) {
                 return hdr;
             }
 
-            reading_full_msg = 1;
+            malformed_msg = false;
         }
 
-        syslog(LOG_DEBUG, "Looking to read %d bytes", need_len);
+        syslog(LOG_DEBUG, "FPM Looking to read %d bytes", need_len);
         bytes_read = read(glob->sock, cur, need_len);
 
         if (bytes_read <= 0) {
             char error[BUFSIZ];
             strerror_r(errno, error, BUFSIZ);
-            syslog(LOG_ERR, "Error reading from socket: %s", error);
+            syslog(LOG_ERR, "FPM Error reading from socket: %s", error);
             return NULL;
         }
 
-        syslog(LOG_DEBUG, "Read %d bytes", bytes_read);
+        syslog(LOG_DEBUG, "FPM Read %d bytes", bytes_read);
         cur += bytes_read;
 
         if (bytes_read < need_len) {
@@ -168,12 +171,12 @@ FPMServer::read_fpm_msg(char *buf, size_t buf_len) {
 
         assert(bytes_read == need_len);
 
-        if (reading_full_msg) {
+        if (!malformed_msg) {
             return hdr;
         }
 
         if (!fpm_msg_ok(hdr, buf_len)) {
-            syslog(LOG_ERR, "Malformed fpm message");
+            syslog(LOG_ERR, "FPM Malformed fpm message");
             return NULL;
         }
     }
@@ -218,9 +221,9 @@ void FPMServer::process_fpm_msg(fpm_msg_hdr_t *hdr) {
         print_nhlfe(lsp_msg);
         FlowTable::updateNHLFE(lsp_msg);
     } else if (hdr->msg_type == FPM_MSG_TYPE_FTN) {
-        syslog(LOG_WARNING, "FTN not yet implemented");
+        syslog(LOG_WARNING, "FPM FTN not yet implemented");
     } else {
-        syslog(LOG_WARNING, "Unknown fpm message type %u", hdr->msg_type);
+        syslog(LOG_WARNING, "FPM Unknown fpm message type %u", hdr->msg_type);
     }
 }
 
@@ -241,17 +244,15 @@ void FPMServer::fpm_serve() {
 
 void FPMServer::start() {
     memset(glob, 0, sizeof(*glob));
-    if (!FPMServer::create_listen_sock(FPM_DEFAULT_PORT, &glob->server_sock)) {
-        exit(1);
+    if (FPMServer::create_listen_sock(FPM_DEFAULT_PORT, &glob->server_sock)) {
+        syslog(LOG_CRIT, "FPMServer couldn't open a server socket. Exiting.");
+        exit(EXIT_FAILURE);
     }
 
-    /*
-     * Server forever.
-     */
-    while (1) {
+    while (true) {
         glob->sock = FPMServer::accept_conn(glob->server_sock);
         FPMServer::fpm_serve();
-        syslog(LOG_INFO, "Done serving client");
+        syslog(LOG_INFO, "FPM Done serving client");
     }
 }
 
