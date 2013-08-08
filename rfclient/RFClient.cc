@@ -237,49 +237,45 @@ vector<Interface> RFClient::load_interfaces() {
     return result;
 }
 
+void usage(char *name) {
+    printf("usage: %s [-a <address>] [-i <interface>] [-n <id>]\n\n"
+           "RFClient subscribes to kernel updates and pushes these to \n"
+           "RFServer for further processing.\n\n"
+           "  -a <address>      Specify the MongoDB address\n"
+           "  -i <interface>    Specify which interface to use for client ID\n"
+           "  -n <id>           Manually specify client ID in hex\n"
+           "  -h                Print Help (this message) and exit\n"
+           "\nReport bugs to: https://github.com/routeflow/RouteFlow/issues\n",
+           name);
+}
+
 int main(int argc, char* argv[]) {
     char c;
-    stringstream ss;
-    string id;
+    uint64_t id = get_interface_id(DEFAULT_RFCLIENT_INTERFACE);
     string address = MONGO_ADDRESS;
 
-    while ((c = getopt (argc, argv, "n:i:a:")) != -1)
-        switch (c) {
-        case 'n':
-            fprintf(stderr, "Custom naming not supported yet.");
-            exit(EXIT_FAILURE);
-            /* TODO: support custom naming for VMs.
-            if (!id.empty()) {
-                fprintf (stderr, "-i is already defined");
-                exit(EXIT_FAILURE);
-            }
-            id = optarg;
-            */
-            break;
-        case 'i':
-            if (!id.empty()) {
-                fprintf(stderr, "-n is already defined");
-                exit(EXIT_FAILURE);
-            }
-            id = to_string<uint64_t>(get_interface_id(optarg));
-            break;
+    while ((c = getopt (argc, argv, "a:i:n:h")) != -1) {
+        switch(c) {
         case 'a':
             address = optarg;
             break;
-        case '?':
-            if (optopt == 'n' || optopt == 'i' || optopt == 'a')
-                fprintf(stderr, "Option -%c requires an argument.\n", optopt);
-            else if (isprint(optopt))
-                fprintf(stderr, "Unknown option `-%c'.\n", optopt);
-            else
-                fprintf(stderr, "Unknown option character `\\x%x'.\n", optopt);
-            return EXIT_FAILURE;
+        case 'i':
+            id = get_interface_id(optarg);
+            break;
+        case 'n':
+            id = strtol(optarg, NULL, 16);
+            break;
+        case 'h':
+            usage(argv[0]);
+            return 0;
         default:
-            abort();
+            usage(argv[0]);
+            return EXIT_FAILURE;
         }
+    }
 
     openlog("rfclient", LOG_NDELAY | LOG_NOWAIT | LOG_PID, SYSLOGFACILITY);
-    RFClient s(get_interface_id(DEFAULT_RFCLIENT_INTERFACE), address);
+    RFClient s(id, address);
 
     return 0;
 }
