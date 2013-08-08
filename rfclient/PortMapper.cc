@@ -51,7 +51,7 @@ void PortMapper::send_port_map(Interface &iface) {
  * Sends the magic RouteFlow portmap packet out an interface with the given
  * name, encoding the given port number inside the message.
  *
- * Returns -1 on failure, or exits in dire circumstances.
+ * Returns the number of characters sent, or -1 on failure.
  */
 int PortMapper::send_packet(const char ethName[], uint8_t port) {
     char buffer[BUFFER_SIZE];
@@ -68,8 +68,8 @@ int PortMapper::send_packet(const char ethName[], uint8_t port) {
 
     if (ioctl(SockFd, SIOCGIFFLAGS, &req) < 0) {
         strerror_r(errno, error, BUFSIZ);
-        syslog(LOG_CRIT, "ioctl(SIOCGIFFLAGS): %s", error);
-        exit(1);
+        syslog(LOG_ERR, "ioctl(SIOCGIFFLAGS): %s", error);
+        return -1;
     }
 
     /* If the interface is down we can't send the packet. */
@@ -80,18 +80,17 @@ int PortMapper::send_packet(const char ethName[], uint8_t port) {
     /* Get the interface index. */
     if (ioctl(SockFd, SIOCGIFINDEX, &req) < 0) {
         strerror_r(errno, error, BUFSIZ);
-        syslog(LOG_CRIT, "ioctl(SIOCGIFINDEX): %s", error);
-        exit(1);
+        syslog(LOG_ERR, "ioctl(SIOCGIFINDEX): %s", error);
+        return -1;
     }
 
     int ifindex = req.ifr_ifindex;
-
     int addrLen = sizeof(struct sockaddr_ll);
 
     if (ioctl(SockFd, SIOCGIFHWADDR, &req) < 0) {
         strerror_r(errno, error, BUFSIZ);
-        syslog(LOG_CRIT, "ioctl(SIOCGIFHWADDR): %s", error);
-        exit(1);
+        syslog(LOG_ERR, "ioctl(SIOCGIFHWADDR): %s", error);
+        return -1;
     }
     int i;
     for (i = 0; i < IFHWADDRLEN; i++)
@@ -103,8 +102,8 @@ int PortMapper::send_packet(const char ethName[], uint8_t port) {
 
     if (bind(SockFd, (struct sockaddr *) &sll, addrLen) < 0) {
         strerror_r(errno, error, BUFSIZ);
-        syslog(LOG_CRIT, "bind(): %s", error);
-        exit(1);
+        syslog(LOG_ERR, "bind(): %s", error);
+        return -1;
     }
 
     memset(buffer, 0, BUFFER_SIZE);
