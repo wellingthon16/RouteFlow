@@ -8,6 +8,9 @@ using namespace std;
 /** Abstract class for a message transmited through the IPC */
 class IPCMessage {
     public:
+        /** Destruct the message. */
+        virtual ~IPCMessage();
+
         /** Get the type of the message.
         * @return the type of the message */
         virtual int get_type() = 0;
