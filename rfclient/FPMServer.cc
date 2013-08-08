@@ -38,14 +38,6 @@
 #include "FPMServer.hh"
 #include "FlowTable.h"
 
-typedef struct glob_t_ {
-    int server_sock;
-    int sock;
-} glob_t;
-
-glob_t glob_space;
-glob_t *glob = &glob_space;
-
 /*
  * create_listen_sock
  *
@@ -153,7 +145,7 @@ FPMServer::read_fpm_msg(char *buf, size_t buf_len) {
         }
 
         syslog(LOG_DEBUG, "FPM Looking to read %d bytes", need_len);
-        bytes_read = read(glob->sock, cur, need_len);
+        bytes_read = read(this->sock, cur, need_len);
 
         if (bytes_read <= 0) {
             char error[BUFSIZ];
@@ -234,24 +226,23 @@ void FPMServer::fpm_serve() {
     char buf[FPM_MAX_MSG_LEN];
     fpm_msg_hdr_t *hdr;
     while (1) {
-        hdr = FPMServer::read_fpm_msg(buf, sizeof(buf));
+        hdr = this->read_fpm_msg(buf, sizeof(buf));
         if (!hdr) {
             return;
         }
-        FPMServer::process_fpm_msg(hdr);
+        this->process_fpm_msg(hdr);
     }
 }
 
-void FPMServer::start() {
-    memset(glob, 0, sizeof(*glob));
-    if (FPMServer::create_listen_sock(FPM_DEFAULT_PORT, &glob->server_sock)) {
+void FPMServer::operator()() {
+    if (this->create_listen_sock(FPM_DEFAULT_PORT, &this->server_sock)) {
         syslog(LOG_CRIT, "FPMServer couldn't open a server socket. Exiting.");
         exit(EXIT_FAILURE);
     }
 
     while (true) {
-        glob->sock = FPMServer::accept_conn(glob->server_sock);
-        FPMServer::fpm_serve();
+        this->sock = this->accept_conn(this->server_sock);
+        this->fpm_serve();
         syslog(LOG_INFO, "FPM Done serving client");
     }
 }

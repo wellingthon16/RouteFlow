@@ -15,7 +15,7 @@
 #include "converter.h"
 #include "FlowTable.h"
 #ifdef FPM_ENABLED
-  #include "FPMServer.hh"
+#include "FPMServer.hh"
 #endif /* FPM_ENABLED */
 
 using namespace std;
@@ -39,7 +39,7 @@ boost::thread FlowTable::HTPolling;
 struct rtnl_handle FlowTable::rthNeigh;
 
 #ifdef FPM_ENABLED
-  boost::thread FlowTable::FPMClient;
+  boost::thread FlowTable::FPMServer;
 #else
   boost::thread FlowTable::RTPolling;
   struct rtnl_handle FlowTable::rth;
@@ -84,7 +84,8 @@ void FlowTable::start(uint64_t vm_id, InterfaceMap *ifm,
 
 #ifdef FPM_ENABLED
     syslog(LOG_INFO, "FPM interface enabled");
-    FPMClient = boost::thread(&FPMServer::start);
+    FPMServer::FPMServer fpm = FPMServer::FPMServer();
+    FlowTable::FPMServer = boost::thread(fpm);
 #else
     syslog(LOG_INFO, "Netlink interface enabled");
     rtnl_open(&rth, RTMGRP_IPV4_MROUTE | RTMGRP_IPV4_ROUTE
@@ -106,7 +107,7 @@ void FlowTable::interrupt() {
     HTPolling.interrupt();
     GWResolver.interrupt();
 #ifdef FPM_ENABLED
-    FPMClient.interrupt();
+    FPMServer.interrupt();
 #else
     RTPolling.interrupt();
 #endif /* FPM_ENABLED */

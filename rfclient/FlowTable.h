@@ -65,7 +65,7 @@ class FlowTable {
         static struct rtnl_handle rthNeigh;
 
 #ifdef FPM_ENABLED
-        static boost::thread FPMClient;
+        static boost::thread FPMServer;
 #else
         static boost::thread RTPolling;
         static struct rtnl_handle rth;

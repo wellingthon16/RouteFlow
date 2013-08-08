@@ -5,15 +5,19 @@
 
 class FPMServer {
     public:
-        static void start();
+        FPMServer() { };
+        void operator()();
 
     private:
-        static int create_listen_sock(int port, int* sock_p);
-        static int accept_conn(int listen_sock);
-        static void fpm_serve();
-        static void print_nhlfe(const nhlfe_msg_t *msg);
-        static fpm_msg_hdr_t* read_fpm_msg (char* buf, size_t buf_len);
-        static void process_fpm_msg(fpm_msg_hdr_t* hdr);
+        int server_sock;
+        int sock;
+
+        int create_listen_sock(int port, int* sock_p);
+        int accept_conn(int listen_sock);
+        void fpm_serve();
+        void print_nhlfe(const nhlfe_msg_t *msg);
+        fpm_msg_hdr_t* read_fpm_msg (char* buf, size_t buf_len);
+        void process_fpm_msg(fpm_msg_hdr_t* hdr);
 };
 
 #endif /* RFCLIENT_FPMSERVER_H_ */
