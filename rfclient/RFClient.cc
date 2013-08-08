@@ -200,7 +200,11 @@ uint32_t RFClient::get_port_number(string ifName) {
     return atoi(port_num.c_str());
 }
 
-/* Gather all of the interfaces on the system. */
+/**
+ * Gather all of the interfaces on the system.
+ *
+ * Returns an empty vector on failure.
+ */
 vector<Interface> RFClient::load_interfaces() {
     struct ifaddrs *ifaddr, *ifa;
     vector<Interface> result;
@@ -208,8 +212,8 @@ vector<Interface> RFClient::load_interfaces() {
     if (getifaddrs(&ifaddr) == -1) {
         char error[BUFSIZ];
         strerror_r(errno, error, BUFSIZ);
-        syslog(LOG_CRIT, "getifaddrs: %s", error);
-        exit(EXIT_FAILURE);
+        syslog(LOG_ERR, "getifaddrs: %s", error);
+        return result;
     }
 
     for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
