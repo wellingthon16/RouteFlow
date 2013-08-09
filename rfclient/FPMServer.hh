@@ -2,7 +2,7 @@
 #define RFCLIENT_FPMSERVER_H_
 
 #include "fpm.h"
-#include "FlowTable.h"
+#include "FlowTable.hh"
 
 class FPMServer {
     public:

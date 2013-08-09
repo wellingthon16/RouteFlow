@@ -8,7 +8,7 @@
 
 #include "ipc/IPC.h"
 #include "ipc/RFProtocolFactory.h"
-#include "FlowTable.h"
+#include "FlowTable.hh"
 #include "PortMapper.hh"
 
 class RFClient : private RFProtocolFactory, private IPCMessageProcessor,

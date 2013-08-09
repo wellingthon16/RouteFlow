@@ -34,9 +34,7 @@
 #include <assert.h>
 
 #include "fpm_lsp.h"
-
 #include "FPMServer.hh"
-#include "FlowTable.h"
 
 /*
  * create_listen_sock

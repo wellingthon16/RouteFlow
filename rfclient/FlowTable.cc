@@ -13,7 +13,7 @@
 #include <iostream>
 
 #include "converter.h"
-#include "FlowTable.h"
+#include "FlowTable.hh"
 #ifdef FPM_ENABLED
 #include "FPMServer.hh"
 #endif /* FPM_ENABLED */

@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <boost/thread.hpp>
 #include "libnetlink.hh"
-#include "SyncQueue.h"
+#include "SyncQueue.hh"
 
 #include "fpm.h"
 #include "fpm_lsp.h"
