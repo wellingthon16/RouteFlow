@@ -206,12 +206,12 @@ void FPMServer::process_fpm_msg(fpm_msg_hdr_t *hdr) {
         struct nlmsghdr *n = (nlmsghdr *) fpm_msg_data(hdr);
 
         if (n->nlmsg_type == RTM_NEWROUTE || n->nlmsg_type == RTM_DELROUTE) {
-            FlowTable::updateRouteTable(n);
+            table->updateRouteTable(n);
         }
     } else if (hdr->msg_type == FPM_MSG_TYPE_NHLFE) {
         nhlfe_msg_t *lsp_msg = (nhlfe_msg_t *) fpm_msg_data(hdr);
         print_nhlfe(lsp_msg);
-        FlowTable::updateNHLFE(lsp_msg);
+        table->updateNHLFE(lsp_msg);
     } else if (hdr->msg_type == FPM_MSG_TYPE_FTN) {
         syslog(LOG_WARNING, "FPM FTN not yet implemented");
     } else {
@@ -232,6 +232,10 @@ void FPMServer::fpm_serve() {
         }
         this->process_fpm_msg(hdr);
     }
+}
+
+FPMServer::FPMServer(FlowTable *ft) {
+    this->table = ft;
 }
 
 void FPMServer::operator()() {

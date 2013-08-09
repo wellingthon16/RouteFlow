@@ -2,13 +2,15 @@
 #define RFCLIENT_FPMSERVER_H_
 
 #include "fpm.h"
+#include "FlowTable.h"
 
 class FPMServer {
     public:
-        FPMServer() { };
+        FPMServer(FlowTable *ft);
         void operator()();
 
     private:
+        FlowTable *table;
         int server_sock;
         int sock;
 

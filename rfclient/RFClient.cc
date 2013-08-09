@@ -102,7 +102,8 @@ RFClient::RFClient(uint64_t id, const string &address) {
 }
 
 void RFClient::startFlowTable() {
-    boost::thread t(&FlowTable::start, this->id, this, this->ipc);
+    this->flowTable = new FlowTable(this->id, this, this->ipc);
+    boost::thread t(*this->flowTable);
     t.detach();
 }
 
