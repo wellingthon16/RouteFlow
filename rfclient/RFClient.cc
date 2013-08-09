@@ -14,6 +14,8 @@
 
 using namespace std;
 
+#define PORT_ERROR (0xffffffff)
+
 /* Get the MAC address of the interface. */
 int get_hwaddr_byname(const char * ifname, uint8_t hwaddr[]) {
     struct ifreq ifr;
@@ -195,9 +197,19 @@ int RFClient::set_hwaddr_byname(const char * ifname, uint8_t hwaddr[],
     return 0;
 }
 
+/**
+ * Converts the given interface string into a logical port number.
+ *
+ * Returns PORT_ERROR on error.
+ */
 uint32_t RFClient::get_port_number(string ifName) {
     size_t pos = ifName.find_first_of("123456789");
+    if (pos >= ifName.length()) {
+        return PORT_ERROR;
+    }
     string port_num = ifName.substr(pos, ifName.length() - pos + 1);
+
+    /* TODO: Do a better job of determining interface numbers */
     return atoi(port_num.c_str());
 }
 
@@ -228,6 +240,10 @@ vector<Interface> RFClient::load_interfaces() {
             Interface interface;
             interface.name = ifaceName;
             interface.port = get_port_number(ifaceName);
+            if (interface.port == PORT_ERROR) {
+                printf("Ignoring interface %s\n", ifaceName.c_str());
+                continue;
+            }
             interface.hwaddress = MACAddress(hwaddress);
             interface.active = false;
 
