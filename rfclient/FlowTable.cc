@@ -14,9 +14,7 @@
 
 #include "converter.h"
 #include "FlowTable.hh"
-#ifdef FPM_ENABLED
 #include "FPMServer.hh"
-#endif /* FPM_ENABLED */
 
 using namespace std;
 
@@ -37,40 +35,51 @@ static int HTPollingCb(const struct sockaddr_nl*, struct nlmsghdr *n,
     return ft->updateHostTable(n);
 }
 
-#ifndef FPM_ENABLED
 static int RTPollingCb(const struct sockaddr_nl*, struct nlmsghdr *n,
                        void *arg) {
     FlowTable *ft = reinterpret_cast<FlowTable *>(arg);
     return ft->updateRouteTable(n);
 }
-#endif /* FPM_ENABLED */
 
-FlowTable::FlowTable(uint64_t id, InterfaceMap *ifm, IPCMessageService *ipc) {
+FlowTable::FlowTable(uint64_t id, InterfaceMap *ifm, IPCMessageService *ipc,
+                     RouteSource source) {
     this->vm_id = id;
     this->ifMap = ifm;
     this->ipc = ipc;
+    this->source = source;
 }
 
 FlowTable::FlowTable(const FlowTable& other) {
     this->vm_id = other.vm_id;
     this->ifMap = other.ifMap;
     this->ipc = other.ipc;
+    this->source = other.source;
 }
 
 void FlowTable::operator()() {
+    FPMServer *fpm;
     rtnl_open(&rthNeigh, RTMGRP_NEIGH);
     HTPolling = boost::thread(&rtnl_listen, &rthNeigh, &HTPollingCb, this);
 
-#ifdef FPM_ENABLED
-    syslog(LOG_INFO, "FPM interface enabled");
-    FPMServer::FPMServer fpm(this);
-    this->FPMServer = boost::thread(fpm);
-#else
-    syslog(LOG_INFO, "Netlink interface enabled");
-    rtnl_open(&rth, RTMGRP_IPV4_MROUTE | RTMGRP_IPV4_ROUTE
-                  | RTMGRP_IPV6_MROUTE | RTMGRP_IPV6_ROUTE);
-    RTPolling = boost::thread(&rtnl_listen, &rth, &RTPollingCb, this);
-#endif /* FPM_ENABLED */
+    switch (this->source) {
+    case RS_NETLINK: {
+        syslog(LOG_NOTICE, "Netlink interface enabled");
+        rtnl_open(&rth, RTMGRP_IPV4_MROUTE | RTMGRP_IPV4_ROUTE
+                        | RTMGRP_IPV6_MROUTE | RTMGRP_IPV6_ROUTE);
+        RTPolling = boost::thread(&rtnl_listen, &rth, &RTPollingCb, this);
+        break;
+    }
+    case RS_FPM: {
+        fpm = new FPMServer(this);
+        RTPolling = boost::thread(*fpm);
+        syslog(LOG_NOTICE, "FPM interface enabled");
+        break;
+    }
+    default:
+        syslog(LOG_CRIT, "Invalid route source specified. Disabling route "
+               "updates.");
+        break;
+    }
 
     GWResolver = boost::thread(&FlowTable::GWResolverCb, this);
     GWResolver.join();
@@ -85,11 +94,7 @@ void FlowTable::clear() {
 void FlowTable::interrupt() {
     HTPolling.interrupt();
     GWResolver.interrupt();
-#ifdef FPM_ENABLED
-    FPMServer.interrupt();
-#else
     RTPolling.interrupt();
-#endif /* FPM_ENABLED */
 }
 
 void FlowTable::GWResolverCb(FlowTable *ft) {
@@ -600,7 +605,6 @@ int FlowTable::sendToHw(RouteModType mod, const IPAddress& addr,
     return 0;
 }
 
-#ifdef FPM_ENABLED
 /*
  * Add or remove a Push, Pop or Swap operation matching on a label only
  * For matching on IP, update FTN (not yet implemented) is needed
@@ -673,4 +677,3 @@ void FlowTable::updateNHLFE(nhlfe_msg_t *nhlfe_msg) {
 
     return;
 }
-#endif /* FPM_ENABLED */

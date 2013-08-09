@@ -17,8 +17,6 @@
  * This file uses code from fpm_stub.c
  */
 
-#ifdef FPM_ENABLED
-
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -248,5 +246,3 @@ void FPMServer::operator()() {
         syslog(LOG_INFO, "FPM Done serving client");
     }
 }
-
-#endif /* FPM_ENABLED */

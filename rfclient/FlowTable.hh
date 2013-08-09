@@ -24,9 +24,15 @@
 
 using namespace std;
 
+typedef enum route_source {
+    RS_NETLINK,
+    RS_FPM,
+} RouteSource;
+
 class FlowTable {
     public:
-        FlowTable(uint64_t vm_id, InterfaceMap*, IPCMessageService*);
+        FlowTable(uint64_t vm_id, InterfaceMap*, IPCMessageService*,
+                  RouteSource src);
         FlowTable(const FlowTable&);
 
         static void GWResolverCb(FlowTable *ft);
@@ -38,26 +44,21 @@ class FlowTable {
 
         int updateHostTable(struct nlmsghdr*);
         int updateRouteTable(struct nlmsghdr*);
-
-#ifdef FPM_ENABLED
         void updateNHLFE(nhlfe_msg_t *nhlfe_msg);
-#endif /* FPM_ENABLED */
 
     private:
+        RouteSource source;
         InterfaceMap* ifMap;
         IPCMessageService* ipc;
         uint64_t vm_id;
 
         boost::thread GWResolver;
         boost::thread HTPolling;
-        struct rtnl_handle rthNeigh;
-
-#ifdef FPM_ENABLED
-        boost::thread FPMServer;
-#else
         boost::thread RTPolling;
+
+        /* NetLink handlers */
+        struct rtnl_handle rthNeigh;
         struct rtnl_handle rth;
-#endif /* FPM_ENABLED */
 
         /* Known hosts */
         map<string, HostEntry> hostTable;

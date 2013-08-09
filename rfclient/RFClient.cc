@@ -77,7 +77,7 @@ bool RFClient::findInterface(const char *ifName, Interface *dst) {
     return true;
 }
 
-RFClient::RFClient(uint64_t id, const string &address) {
+RFClient::RFClient(uint64_t id, const string &address, RouteSource source) {
     this->id = id;
 
     string id_str = to_string<uint64_t>(id);
@@ -95,14 +95,14 @@ RFClient::RFClient(uint64_t id, const string &address) {
         syslog(LOG_INFO, "Registering client port (vm_port=%d)", it->port);
     }
 
-    this->startFlowTable();
+    this->startFlowTable(source);
     this->startPortMapper(ifaces);
 
     ipc->listen(RFCLIENT_RFSERVER_CHANNEL, this, this, true);
 }
 
-void RFClient::startFlowTable() {
-    this->flowTable = new FlowTable(this->id, this, this->ipc);
+void RFClient::startFlowTable(RouteSource source) {
+    this->flowTable = new FlowTable(this->id, this, this->ipc, source);
     boost::thread t(*this->flowTable);
     t.detach();
 }
@@ -243,12 +243,14 @@ vector<Interface> RFClient::load_interfaces() {
 }
 
 void usage(char *name) {
-    printf("usage: %s [-a <address>] [-i <interface>] [-n <id>]\n\n"
+    printf("usage: %s [-f] [-a <address>] [-i <interface>] [-n <id>]\n\n"
            "RFClient subscribes to kernel updates and pushes these to \n"
            "RFServer for further processing.\n\n"
+           "Arguments:\n"
            "  -a <address>      Specify the MongoDB address\n"
            "  -i <interface>    Specify which interface to use for client ID\n"
-           "  -n <id>           Manually specify client ID in hex\n"
+           "  -f                Use the FPM interface for route updates\n"
+           "  -n <id>           Manually specify client ID in hex\n\n"
            "  -h                Print Help (this message) and exit\n"
            "\nReport bugs to: https://github.com/routeflow/RouteFlow/issues\n",
            name);
@@ -258,11 +260,15 @@ int main(int argc, char* argv[]) {
     char c;
     uint64_t id = get_interface_id(DEFAULT_RFCLIENT_INTERFACE);
     string address = MONGO_ADDRESS;
+    RouteSource route_source = RS_NETLINK;
 
-    while ((c = getopt (argc, argv, "a:i:n:h")) != -1) {
+    while ((c = getopt (argc, argv, "a:fi:n:h")) != -1) {
         switch(c) {
         case 'a':
             address = optarg;
+            break;
+        case 'f':
+            route_source = RS_FPM;
             break;
         case 'i':
             id = get_interface_id(optarg);
@@ -280,7 +286,7 @@ int main(int argc, char* argv[]) {
     }
 
     openlog("rfclient", LOG_NDELAY | LOG_NOWAIT | LOG_PID, SYSLOGFACILITY);
-    RFClient s(id, address);
+    RFClient s(id, address, route_source);
 
     return 0;
 }

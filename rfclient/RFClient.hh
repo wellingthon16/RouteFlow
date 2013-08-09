@@ -14,7 +14,7 @@
 class RFClient : private RFProtocolFactory, private IPCMessageProcessor,
                  public InterfaceMap {
     public:
-        RFClient(uint64_t id, const string &address);
+        RFClient(uint64_t id, const string &address, RouteSource);
         bool findInterface(const char *ifName, Interface *dst);
 
     private:
@@ -29,7 +29,7 @@ class RFClient : private RFProtocolFactory, private IPCMessageProcessor,
 
         uint8_t hwaddress[IFHWADDRLEN];
 
-        void startFlowTable();
+        void startFlowTable(RouteSource source);
         void startPortMapper(vector<Interface>);
         bool process(const string &from, const string &to,
                      const string &channel, IPCMessage& msg);
