@@ -22,6 +22,7 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
     def __init__(self, *arg, **kwargs):
         self.controllers = dict()
         self.monitors = dict()
+        self.controllerLock = threading.Lock()
         self.ipc = MongoIPC.MongoIPCMessageService(MONGO_ADDRESS,
                                                    MONGO_DB_NAME,
                                                    RFMONITOR_ID,
@@ -44,13 +45,22 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
         """        
         type_ = msg.get_type()
         if type_ == CONTROLLER_REGISTER:
-            self.controllers[msg.get_ct_addr() + ':'
-                             + str(msg.get_ct_port())] = msg.get_ct_role()
-            self.log.info("A %s controller at %s:%s is up", msg.get_ct_role(),
-                          msg.get_ct_addr(), msg.get_ct_port())
+            self.controllerLock.acquire()
+            try:
+                self.controllers[msg.get_ct_addr() + ':'
+                                 + str(msg.get_ct_port())] = msg.get_ct_role()
+                self.log.info("A %s controller at %s:%s is up",
+                              msg.get_ct_role(), msg.get_ct_addr(),
+                              msg.get_ct_port())
+            finally:
+                try:
+                    self.controllerLock.release()
+                except threading.ThreadError as e:
+                    self,log.info("ERROR: %s. Lock for thread on \
+                                  controller dict already released", e)
             test_function = partial(self.test)
-            monitor = Monitor(msg.get_ct_addr(), msg.get_ct_port(), test_function,
-                              callback_time=1000)
+            monitor = Monitor(msg.get_ct_addr(), msg.get_ct_port(),
+                              test_function, callback_time=1000)
             self.monitors[msg.get_ct_addr() + ':' +
                           str(msg.get_ct_port())] = monitor
             monitor.start_test()
