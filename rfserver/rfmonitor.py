@@ -5,7 +5,6 @@ import logging
 import threading
 import time
 import socket
-from functools import partial
 
 import rflib.ipc.IPC as IPC
 import rflib.ipc.MongoIPC as MongoIPC
@@ -35,6 +34,7 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
         ch.setLevel(logging.INFO)
         ch.setFormatter(logging.Formatter(logging.BASIC_FORMAT))
         self.log.addHandler(ch)
+        self.test_controllers()
 
     def process(self, _from, to, channel, msg):
         """Process messages sent by controllers.
@@ -53,17 +53,23 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
                               msg.get_ct_role(), msg.get_ct_addr(),
                               msg.get_ct_port())
             finally:
-                try:
-                    self.controllerLock.release()
-                except threading.ThreadError as e:
-                    self,log.info("ERROR: %s. Lock for thread on \
-                                  controller dict already released", e)
-            test_function = partial(self.test)
-            monitor = Monitor(msg.get_ct_addr(), msg.get_ct_port(),
-                              test_function, callback_time=1000)
-            self.monitors[msg.get_ct_addr() + ':' +
-                          str(msg.get_ct_port())] = monitor
-            monitor.start_test()
+                self.controllerLock.release()
+
+    def test_controllers(self):
+        while True:
+            for controller in self.controllers.keys():
+                host, port = controller.split(':')
+                port = int(port)
+                if controller in self.monitors:
+                    monitor = self.monitors[controller]
+                    if monitor.timeout < time.time():
+                        self.test(host, port)
+                        monitor.schedule_test()
+                    else:
+                        continue
+                else:
+                    monitor = Monitor(host, port, callback_time=5000)
+                    self.monitors[controller] = monitor
 
     def test(self, host, port):
         """Test if a controller is up.
@@ -75,6 +81,7 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
         """
         s = socket(AF_INET, SOCK_STREAM)
         s.setblocking(0)
+        s.settimeout(60)
         result = s.connect_ex((host, port))
 
         if result != 0:
@@ -83,10 +90,14 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
         s.close()
 
     def handle_controller_death(self, host, port):
-        self.controllers.pop(host + ':' + str(port), None)
-        self.monitors[host + ':' + str(port)].stop_test()
-        self.monitors.pop(host + ':' + str(port), None)
-
+        self.controllerLock.acquire()
+        try:
+            self.controllers.pop(host + ':' + str(port), None)
+            self.monitors[host + ':' + str(port)].stop_test()
+            self.monitors.pop(host + ':' + str(port), None)
+        finally:
+            self.controllerLock.release()
+            
     def stop_monitors(self):
         for x in self.monitors:
             x.stop_test()
@@ -94,7 +105,7 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
 
 class Monitor(object):
     """Monitors each controller individually"""
-    def __init__(self, host, port, test, callback_time=1000):
+    def __init__(self, host, port, callback_time=1000):
         """Initialize Monitor
 
         Keyword Arguments:
@@ -107,9 +118,10 @@ class Monitor(object):
         super(Monitor, self).__init__()
         self.host = host
         self.port = port
-        self.test = test
         self.callback_time = callback_time
-        self.running = False
+        self.running = True
+        self.timeout = 0.0
+        self.schedule_test()
 
     def start_test(self):
         self.running = True
@@ -120,11 +132,10 @@ class Monitor(object):
         self.running = False
 
     def schedule_test(self):
-        while self.running:
+        if self.running:
             current_time = time.time()
             if self.timeout <= current_time:
                 self.timeout += self.callback_time/1000.00
-            self.test(self.host, self.port)
 
 
 if __name__ == "__main__":
