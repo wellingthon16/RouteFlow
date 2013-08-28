@@ -15,10 +15,11 @@ SUPER="$DO sudo"
 APT_OPTS="-y"
 PIP_OPTS=""
 
-ROUTEFLOW_GIT="https://github.com/CPqD/RouteFlow.git"
+ROUTEFLOW_GIT="https://github.com/routeflow/RouteFlow.git"
 DEPENDENCIES="build-essential git-core libboost-dev libboost-dev \
     libboost-program-options-dev libboost-thread-dev \
-    libboost-filesystem-dev iproute-dev python-dev python-pip"
+    libboost-filesystem-dev libboost-system-dev iproute-dev python-dev \
+    python-pip"
 
 usage() {
     echo "usage:$0 [-hcqvdsgiu] [-m MONGO_VERSION] [-o OVS_VERSION]" \
@@ -50,7 +51,7 @@ usage() {
          "specified at once."
     echo "Controllers must be specified at the end of the command."
     echo;
-    echo "Report bugs to: https://github.com/CPqD/RouteFlow/issues"
+    echo "Report bugs to: https://github.com/routeflow/RouteFlow/issues"
 }
 
 verlte() {
@@ -73,10 +74,14 @@ get_versions() {
     if (echo "$text" | grep -q "Ubuntu"); then
         version=`lsb_release -a 2>/dev/null | grep "Release" | cut -f2`
 
-        # Versions prior to Ubuntu 12.04 don't supply MongoDB-2.0 and OVS-1.4.
+        # Versions prior to Ubuntu 12.04 don't supply MongoDB-2.0 and OVS.
         if (verlt $version "12.04"); then
             MONGO_VERSION="2.0.9"
-            OVS_VERSION="1.4.6"
+            OVS_VERSION="1.10.0"
+        fi
+
+        if (echo "$*" | grep -q "ryu"); then
+            OVS_VERSION="1.10.0";
         fi
 
         if (verlt $version "12.04"); then
@@ -136,6 +141,11 @@ build_routeflow() {
 
         if [ $INSTALL_VMS -eq 1 ]; then
             $DO cd rftest
+            $SUPER mkdir -p /cgroup
+            if [ grep -q "cgroup" "/etc/fstab" ]; then
+                $DO echo "none /cgroup cgroup defaults 0 0" >> /etc/fstab
+            fi
+            $SUPER mount none -t cgroup /cgroup
             $SUPER ./create
             $DO cd -
         fi

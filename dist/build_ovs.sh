@@ -12,9 +12,8 @@ install_ovs() {
 
     $SUPER make install || return 1
 
-    $SUPER mkdir /lib/modules/`uname -r`/kernel/net/ovs || return 1
-    $SUPER cp datapath/linux/*.ko /lib/modules/`uname -r`/kernel/net/ovs/ ||
-        return 1
+    $SUPER mkdir -p /lib/modules/`uname -r`/kernel/net/ovs
+    $SUPER make modules_install || return 1
     $SUPER depmod -a || return 1
     $SUPER modprobe openvswitch || return 1
     grep -q openvswitch /etc/modules
@@ -22,11 +21,13 @@ install_ovs() {
     status=$?
     if [ $status -eq 1 ]; then
         $SUPER echo "openvswitch" >>/etc/modules || return 1
-    elif [ $status -ne 0 ]; then
-        print_status "Can't add openvswitch_mod to /etc/modules" $YELLOW
+        if [ $status -ne 0 ]; then
+            print_status "Can't add openvswitch_mod to /etc/modules" $YELLOW
+        fi
     fi
 
-    $SUPER mkdir -p /usr/local/etc/openvswitch || return 1
+    $SUPER mkdir -p /usr/local/etc/openvswitch
+    $SUPER rm -f /usr/local/etc/openvswitch/conf.db
     $SUPER ovsdb-tool create /usr/local/etc/openvswitch/conf.db \
         vswitchd/vswitch.ovsschema || return 1
 
@@ -65,6 +66,7 @@ build_ovs() {
 get_ovs() {
     if [ "$1" = "deb" ]; then
         pkg_install "$OVS_BINARY"
+        $SUPER module-assistant prepare
         $SUPER module-assistant auto-install openvswitch-datapath
     else
         build_ovs $@

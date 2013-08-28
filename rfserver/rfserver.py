@@ -32,7 +32,6 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
         self.isltable = RFISLTable()
         self.config = RFConfig(configfile)
         self.islconf = RFISLConf(islconffile)
-        self.configured_rfvs = []
         # Logging
         self.log = logging.getLogger("rfserver")
         self.log.setLevel(logging.INFO)
@@ -335,10 +334,8 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
         self.ipc.send(RFSERVER_RFPROXY_CHANNEL, str(ct_id), rm)
 
     def config_dp(self, ct_id, dp_id):
-        if is_rfvs(dp_id) and dp_id not in self.configured_rfvs:
-            # If rfvs is coming up and we haven't configured it yet, do it
+        if is_rfvs(dp_id):
             # TODO: support more than one OVS
-            self.configured_rfvs.append(dp_id)
             self.send_datapath_config_message(ct_id, dp_id, DC_ALL)
             self.log.info("Configuring RFVS (dp_id=%s)" % format_id(dp_id))
         elif self.rftable.is_dp_registered(ct_id, dp_id) or \
@@ -416,7 +413,7 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
 if __name__ == "__main__":
     description='RFServer co-ordinates RFClient and RFProxy instances, ' \
                 'listens for route updates, and configures flow tables'
-    epilog='Report bugs to: https://github.com/CPqD/RouteFlow/issues'
+    epilog='Report bugs to: https://github.com/routeflow/RouteFlow/issues'
 
     parser = argparse.ArgumentParser(description=description, epilog=epilog)
     parser.add_argument('configfile',
