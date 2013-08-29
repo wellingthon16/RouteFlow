@@ -57,7 +57,12 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
 
     def test_controllers(self):
         while True:
-            for controller in self.controllers.keys():
+            self.controllerLock.acquire()
+            try:
+                controllers = self.controllers.keys()
+            finally:
+                self.controllerLock.release()
+            for controller in self.controllers:
                 host, port = controller.split(':')
                 port = int(port)
                 if controller in self.monitors:
@@ -80,8 +85,7 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
 
         """
         s = socket(AF_INET, SOCK_STREAM)
-        s.setblocking(0)
-        s.settimeout(60)
+        s.settimeout(1)
         result = s.connect_ex((host, port))
 
         if result != 0:
@@ -120,7 +124,7 @@ class Monitor(object):
         self.port = port
         self.callback_time = callback_time
         self.running = True
-        self.timeout = 0.0
+        self.timeout = time.time()
         self.schedule_test()
 
     def start_test(self):
@@ -132,10 +136,9 @@ class Monitor(object):
         self.running = False
 
     def schedule_test(self):
-        if self.running:
-            current_time = time.time()
-            if self.timeout <= current_time:
-                self.timeout += self.callback_time/1000.00
+        current_time = time.time()
+        if self.timeout <= current_time:
+            self.timeout += self.callback_time/1000.00
 
 
 if __name__ == "__main__":
