@@ -47,13 +47,23 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
         if type_ == CONTROLLER_REGISTER:
             self.controllerLock.acquire()
             try:
-                self.controllers[msg.get_ct_addr() + ':'
-                                 + str(msg.get_ct_port())] = msg.get_ct_role()
-                self.log.info("A %s controller at %s:%s is up",
+                if ((msg.get_ct_addr() + ':' + str(msg.get_ct_port())) not in 
+                    self.controllers):
+                    self.controllers[msg.get_ct_addr() + ':'
+                                     + str(msg.get_ct_port())] = {
+                                            'role': msg.get_ct_role(),
+                                            'count': 1
+                                        }
+                    self.log.info("A %s controller at %s:%s is up",
                               msg.get_ct_role(), msg.get_ct_addr(),
                               msg.get_ct_port())
+                else:
+                    self.controllers[msg.get_ct_addr() + ':'
+                                     + str(msg.get_ct_port())]['count'] += 1
             finally:
                 self.controllerLock.release()
+
+            print self.controllers
 
     def test_controllers(self):
         while True:
@@ -62,7 +72,7 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
                 controllers = self.controllers.keys()
             finally:
                 self.controllerLock.release()
-            for controller in self.controllers:
+            for controller in controllers:
                 host, port = controller.split(':')
                 port = int(port)
                 if controller in self.monitors:
