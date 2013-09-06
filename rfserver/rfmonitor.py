@@ -5,6 +5,7 @@ import logging
 import threading
 import time
 import socket
+import random
 
 import rflib.ipc.IPC as IPC
 import rflib.ipc.MongoIPC as MongoIPC
@@ -21,6 +22,7 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
     def __init__(self, *arg, **kwargs):
         self.controllers = dict()
         self.monitors = dict()
+        self.eligible_masters = {}
         self.controllerLock = threading.Lock()
         self.ipc = MongoIPC.MongoIPCMessageService(MONGO_ADDRESS,
                                                    MONGO_DB_NAME,
@@ -44,24 +46,39 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
 
         """        
         type_ = msg.get_type()
+        address = msg.get_ct_addr()
+        port = msg.get_ct_port()
+        role = msg.get_ct_role()
         if type_ == CONTROLLER_REGISTER:
             self.controllerLock.acquire()
             try:
-                if ((msg.get_ct_addr() + ':' + str(msg.get_ct_port())) not in 
+                if ((address + ':' + str(port)) not in 
                     self.controllers):
-                    self.controllers[msg.get_ct_addr() + ':'
-                                     + str(msg.get_ct_port())] = {
-                                            'role': msg.get_ct_role(),
-                                            'count': 1
-                                        }
+                    self.controllers[address + ':' + str(port)] = {
+                        'role': role,
+                        'count': 1
+                    }
                     self.log.info("A %s controller at %s:%s is up",
-                              msg.get_ct_role(), msg.get_ct_addr(),
-                              msg.get_ct_port())
+                                  role, address, port)
                 else:
                     self.controllers[msg.get_ct_addr() + ':'
                                      + str(msg.get_ct_port())]['count'] += 1
+                controller_count = self.controllers[address + ':' 
+                                                   + str(port)]['count']
             finally:
                 self.controllerLock.release()
+
+            if not self.eligible_masters:
+                self.eligible_masters[address + ':' + str(port)] = \
+                    controller_count
+            else:
+                if self.eligible_masters.values()[0] < controller_count:
+                    self.eligible_masters = {}
+                    self.eligible_masters[address + ':' + str(port)] = \
+                    controller_count
+                elif self.eligible_masters.values()[0] == controller_count:
+                    self.eligible_masters[address + ':' + str(port)] = \
+                        controller_count
 
             print self.controllers
 
@@ -104,13 +121,24 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
         s.close()
 
     def handle_controller_death(self, host, port):
+        master = False
         self.controllerLock.acquire()
         try:
+            if self.controllers[host + ':' + str(port)]['role'] == "master":
+                master = True
             self.controllers.pop(host + ':' + str(port), None)
             self.monitors[host + ':' + str(port)].stop_test()
             self.monitors.pop(host + ':' + str(port), None)
+            self.eligible_masters.pop(host + ':' + str(port), None)
         finally:
             self.controllerLock.release()
+        if master:
+            self.elect_new_master()
+
+    def elect_new_master(self):
+        master_key = random.randint(0, len(self.eligible_masters)-1)
+        new_master = self.eligible_masters.keys()[master_key]
+        self.log.info("The new master is %s", new_master)
             
     def stop_monitors(self):
         for x in self.monitors:
