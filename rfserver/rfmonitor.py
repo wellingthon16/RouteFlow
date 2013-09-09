@@ -139,6 +139,9 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
         master_key = random.randint(0, len(self.eligible_masters)-1)
         new_master = self.eligible_masters.keys()[master_key]
         self.log.info("The new master is %s", new_master)
+        host, port = new_master.split(":")
+        msg = ElectMaster(ct_addr=host, ct_port=port)
+        self.ipc.send(RFMONITOR_RFPROXY_CHANNEL, str(0), msg)
             
     def stop_monitors(self):
         for x in self.monitors:
