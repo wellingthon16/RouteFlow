@@ -19,3 +19,5 @@ class RFProtocolFactory(IPC.IPCMessageFactory):
             return RouteMod()
         if type_ == CONTROLLER_REGISTER:
             return ControllerRegister()
+        if type_ == ELECT_MASTER:
+            return ElectMaster()

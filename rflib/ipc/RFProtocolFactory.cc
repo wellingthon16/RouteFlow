@@ -18,6 +18,8 @@ IPCMessage* RFProtocolFactory::buildForType(int type) {
             return new RouteMod();
         case CONTROLLER_REGISTER:
             return new ControllerRegister();
+        case ELECT_MASTER:
+            return new ElectMaster();
         default:
             return NULL;
     }

@@ -41,3 +41,7 @@ ControllerRegister
     ip ct_addr                                                             
     i32 ct_port                                                            
     string ct_role
+
+ElectMaster
+    ip ct_addr
+    i32 ct_port

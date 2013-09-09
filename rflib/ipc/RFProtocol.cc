@@ -601,3 +601,57 @@ string ControllerRegister::str() {
     ss << "  ct_role: " << get_ct_role() << endl;
     return ss.str();
 }
+
+ElectMaster::ElectMaster() {
+    set_ct_addr(IPAddress(IPV4));
+    set_ct_port(0);
+}
+
+ElectMaster::ElectMaster(IPAddress ct_addr, uint32_t ct_port) {
+    set_ct_addr(ct_addr);
+    set_ct_port(ct_port);
+}
+
+int ElectMaster::get_type() {
+    return ELECT_MASTER;
+}
+
+IPAddress ElectMaster::get_ct_addr() {
+    return this->ct_addr;
+}
+
+void ElectMaster::set_ct_addr(IPAddress ct_addr) {
+    this->ct_addr = ct_addr;
+}
+
+uint32_t ElectMaster::get_ct_port() {
+    return this->ct_port;
+}
+
+void ElectMaster::set_ct_port(uint32_t ct_port) {
+    this->ct_port = ct_port;
+}
+
+void ElectMaster::from_BSON(const char* data) {
+    mongo::BSONObj obj(data);
+    set_ct_addr(IPAddress(IPV4, obj["ct_addr"].String()));
+    set_ct_port(string_to<uint32_t>(obj["ct_port"].String()));
+}
+
+const char* ElectMaster::to_BSON() {
+    mongo::BSONObjBuilder _b;
+    _b.append("ct_addr", get_ct_addr().toString());
+    _b.append("ct_port", to_string<uint32_t>(get_ct_port()));
+    mongo::BSONObj o = _b.obj();
+    char* data = new char[o.objsize()];
+    memcpy(data, o.objdata(), o.objsize());
+    return data;
+}
+
+string ElectMaster::str() {
+    stringstream ss;
+    ss << "ElectMaster" << endl;
+    ss << "  ct_addr: " << get_ct_addr().toString() << endl;
+    ss << "  ct_port: " << to_string<uint32_t>(get_ct_port()) << endl;
+    return ss.str();
+}

@@ -19,7 +19,8 @@ enum {
 	VIRTUAL_PLANE_MAP,
 	DATA_PLANE_MAP,
 	ROUTE_MOD,
-	CONTROLLER_REGISTER
+	CONTROLLER_REGISTER,
+	ELECT_MASTER
 };
 
 class PortRegister : public IPCMessage {
@@ -239,6 +240,27 @@ class ControllerRegister : public IPCMessage {
         IPAddress ct_addr;
         uint32_t ct_port;
         string ct_role;
+};
+
+class ElectMaster : public IPCMessage {
+    public:
+        ElectMaster();
+        ElectMaster(IPAddress ct_addr, uint32_t ct_port);
+
+        IPAddress get_ct_addr();
+        void set_ct_addr(IPAddress ct_addr);
+
+        uint32_t get_ct_port();
+        void set_ct_port(uint32_t ct_port);
+
+        virtual int get_type();
+        virtual void from_BSON(const char* data);
+        virtual const char* to_BSON();
+        virtual string str();
+
+    private:
+        IPAddress ct_addr;
+        uint32_t ct_port;
 };
 
 #endif /* __RFPROTOCOL_H__ */
