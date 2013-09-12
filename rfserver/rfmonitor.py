@@ -80,8 +80,6 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
                     self.eligible_masters[address + ':' + str(port)] = \
                         controller_count
 
-            print self.controllers
-
     def test_controllers(self):
         while True:
             self.controllerLock.acquire()
@@ -127,7 +125,6 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
             if self.controllers[host + ':' + str(port)]['role'] == "master":
                 master = True
             self.controllers.pop(host + ':' + str(port), None)
-            self.monitors[host + ':' + str(port)].stop_test()
             self.monitors.pop(host + ':' + str(port), None)
             self.eligible_masters.pop(host + ':' + str(port), None)
         finally:
@@ -142,10 +139,6 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
         host, port = new_master.split(":")
         msg = ElectMaster(ct_addr=host, ct_port=port)
         self.ipc.send(RFMONITOR_RFPROXY_CHANNEL, str(0), msg)
-            
-    def stop_monitors(self):
-        for x in self.monitors:
-            x.stop_test()
 
 
 class Monitor(object):
@@ -164,17 +157,8 @@ class Monitor(object):
         self.host = host
         self.port = port
         self.callback_time = callback_time
-        self.running = True
         self.timeout = time.time()
         self.schedule_test()
-
-    def start_test(self):
-        self.running = True
-        self.timeout = time.time()
-        self.schedule_test()
-
-    def stop_test(self):
-        self.running = False
 
     def schedule_test(self):
         current_time = time.time()
