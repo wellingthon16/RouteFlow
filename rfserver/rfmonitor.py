@@ -81,7 +81,10 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
                         controller_count
 
     def test_controllers(self):
+        """Invoke test on all the controllers"""
         while True:
+            #Extract all the keys from self.controllers first so that 
+            #the main thread does not block the IPC thread
             self.controllerLock.acquire()
             try:
                 controllers = self.controllers.keys()
@@ -92,6 +95,7 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
                 port = int(port)
                 if controller in self.monitors:
                     monitor = self.monitors[controller]
+                    #check if scheduled time has passed
                     if monitor.timeout < time.time():
                         self.test(host, port)
                         monitor.schedule_test()
@@ -119,6 +123,14 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
         s.close()
 
     def handle_controller_death(self, host, port):
+        """Remove all entries coresponding to a controller and 
+        elect new master if master controller is dead
+
+        Keyword Arguments:
+        host -- host ip address at which controller was listening.
+        port -- port at which the controller was listening at `host` address.
+
+        """
         master = False
         self.controllerLock.acquire()
         try:
@@ -133,6 +145,7 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
             self.elect_new_master()
 
     def elect_new_master(self):
+        """Elect new master controller and inform the same to rfproxy"""
         master_key = random.randint(0, len(self.eligible_masters)-1)
         new_master = self.eligible_masters.keys()[master_key]
         self.log.info("The new master is %s", new_master)
@@ -161,6 +174,7 @@ class Monitor(object):
         self.schedule_test()
 
     def schedule_test(self):
+        """Schedule the next test"""
         current_time = time.time()
         if self.timeout <= current_time:
             self.timeout += self.callback_time/1000.00
