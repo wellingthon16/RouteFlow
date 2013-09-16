@@ -65,20 +65,21 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
                                      + str(msg.get_ct_port())]['count'] += 1
                 controller_count = self.controllers[address + ':' 
                                                    + str(port)]['count']
-            finally:
-                self.controllerLock.release()
 
-            if not self.eligible_masters:
-                self.eligible_masters[address + ':' + str(port)] = \
-                    controller_count
-            else:
-                if self.eligible_masters.values()[0] < controller_count:
-                    self.eligible_masters = {}
-                    self.eligible_masters[address + ':' + str(port)] = \
-                    controller_count
-                elif self.eligible_masters.values()[0] == controller_count:
+                if not self.eligible_masters:
                     self.eligible_masters[address + ':' + str(port)] = \
                         controller_count
+                else:
+                    if self.eligible_masters.values()[0] < controller_count:
+                        self.eligible_masters = {}
+                        self.eligible_masters[address + ':' + str(port)] = \
+                            controller_count
+                    elif self.eligible_masters.values()[0] == controller_count:
+                        self.eligible_masters[address + ':' + str(port)] = \
+                            controller_count
+
+            finally:
+                self.controllerLock.release()
 
     def test_controllers(self):
         """Invoke test on all the controllers"""
