@@ -18,11 +18,22 @@ from rflib.types.Option import *
 
 
 class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
-    """Monitors all the controller instances for failiure"""
+    """Monitors all the controller instances for failiure
+
+    Attributes-
+    controllers: A dictionary mapping controller address and
+                 port to controller role and number of devices 
+                 it is connected to.
+    monitors: A dictionary mapping controllers to monitor objects
+              responsible for scheduling tests.
+    eligible_masters: A dictionary mapping controllers to the maximum
+                      count of devices they are connected too.
+
+    """
     def __init__(self, *arg, **kwargs):
         self.controllers = dict()
         self.monitors = dict()
-        self.eligible_masters = {}
+        self.eligible_masters = dict()
         self.controllerLock = threading.Lock()
         self.ipc = MongoIPC.MongoIPCMessageService(MONGO_ADDRESS,
                                                    MONGO_DB_NAME,
@@ -146,7 +157,7 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
             self.elect_new_master()
 
     def elect_new_master(self):
-        """Elect new master controller and inform the same to rfproxy"""
+        """Elect new master controller and inform to rfproxy"""
         master_key = random.randint(0, len(self.eligible_masters)-1)
         new_master = self.eligible_masters.keys()[master_key]
         self.log.info("The new master is %s", new_master)
