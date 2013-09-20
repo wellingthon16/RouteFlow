@@ -81,11 +81,12 @@ class RFMonitor(RFProtocolFactory, IPC.IPCMessageProcessor):
                     self.eligible_masters[address + ':' + str(port)] = \
                         controller_count
                 else:
-                    if self.eligible_masters.values()[0] < controller_count:
+                    maximum_controller_count = self.eligible_masters.values()[0]
+                    if maximum_controller_count < controller_count:
                         self.eligible_masters = {}
                         self.eligible_masters[address + ':' + str(port)] = \
                             controller_count
-                    elif self.eligible_masters.values()[0] == controller_count:
+                    elif maximum_controller_count == controller_count:
                         self.eligible_masters[address + ':' + str(port)] = \
                             controller_count
 
