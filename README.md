@@ -58,11 +58,13 @@ RouteFlow runs on Ubuntu 12.04.
 1. Install the dependencies and setup the application:
 ```
 $ sudo ./build.sh
+```
 
 2. Install compatible version of ryu
-
+```
 $ git clone https://github.com/routeflow/ryu.git
 $ cd ryu; python ./setup.py install
+```
 
 That's it! Now you can run tests 1,2, High Availability test. The setup to run them is described in the "Running" section.
 
