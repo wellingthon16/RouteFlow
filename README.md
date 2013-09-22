@@ -1,16 +1,18 @@
 # Welcome
-This version of RouteFlow is a beta developers' release intended to evaluate RouteFlow for providing virtualized IP routing services on one or more OpenFlow switches.
+This version of RouteFlow for **High Availability** is a beta developers' release intended to evaluate RouteFlow for providing virtualized IP routing services on one or more OpenFlow switches.
 
 You can learn more about RouteFlow in our [main page in GitHub](http://routeflow.github.io/RouteFlow/) and in our [website](https://sites.google.com/site/routeflow/).
 
-Please be aware of POX, OpenFlow, Open vSwitch, Quagga, MongoDB, jQuery, JIT and RouteFlow licenses and terms.
+Please be aware of Ryu, POX, OpenFlow, Open vSwitch, Quagga, MongoDB, jQuery, JIT and RouteFlow licenses and terms.
 
 # Distribution overview
-RouteFlow is a distribution composed by three basic applications: RFClient, RFServer and RFProxy.
+RouteFlow is a distribution composed by four basic applications: RFClient, RFServer, RFMonitor and RFProxy.
 
 * RFClient runs as a daemon in the Virtual Machine (VM), detecting changes in the Linux ARP and routing tables. Routing information is sent to the RFServer when there's an update.
 
 * RFServer is a standalone application that manages the VMs running the RFClient daemons. The RFServer keeps the mapping between the RFClient VM instances and interfaces and the corresponding switches and ports. It connects to RFProxy to instruct it about when to configure flows and also to configure the Open vSwitch to maintain the connectivity in the virtual environment formed by the set of VMs.
+
+* RFMonitor is an application to monitor all running controllers and elect new master in case of master failure. The RFMonitor keeps a mapping between all controllers and their role and number of devices to which the controller is connected to. It checks all controllers periodically if they are up and running. In case a master controller dies it elects the new master and informs RFProxy about the new master which informs all the devices about the new master controller.
 
 * RFProxy is an application (for POX and other controllers) responsible for the interactions with the OpenFlow switches (identified by datapaths) via the OpenFlow protocol. It listens to instructions from the RFServer and notifies it about events in the network. We recommend running POX when you are experimenting and testing your network. Other implementations in different controllers will be available soon.
 
@@ -30,8 +32,11 @@ M:1      \ RFProtocol
 +-------------------+
 |     RFServer      |
 +-------------------+
++-------------------+
+|     RFMonitor     |
++-------------------+
          \
-1:1      \ RFProtocol
+1:M      \ RFProtocol
          \
 +-------------------+
 |      RFProxy      |
@@ -50,28 +55,19 @@ M:1      \ RFProtocol
 
 RouteFlow runs on Ubuntu 12.04.
 
-1. Install the dependencies:
+1. Install the dependencies and setup the application:
 ```
-sudo apt-get install build-essential git libboost-dev \
-  libboost-program-options-dev libboost-thread-dev \
-  libboost-filesystem-dev iproute-dev openvswitch-switch \
-  mongodb python-pymongo
-```
+$ sudo ./build.sh
 
-2. Clone RouteFlow's repository on GitHub:
-```
-$ git clone git://github.com/CPqD/RouteFlow.git
-```
+2. Install compatible version of ryu
 
-3. Build `rfclient`
-```
-make rfclient
-```
+$ git clone https://github.com/routeflow/ryu.git
+$ cd ryu; python ./setup.py install
 
-That's it! Now you can run tests 1 and 2. The setup to run them is described in the "Running" section.
+That's it! Now you can run tests 1,2, High Availability test. The setup to run them is described in the "Running" section.
 
 # Running
-The folder rftest contains all that is needed to create and run two test cases.
+The folder rftest contains all that is needed to create and run three test cases.
 
 ## Virtual environment
 First, create the default LXC containers that will run as virtual machines:
