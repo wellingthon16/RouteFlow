@@ -1,7 +1,7 @@
 #!/bin/sh
 
 RYU_GIT="https://github.com/routeflow/ryu-rfproxy.git"
-RYU_BRANCH="origin/master"
+RYU_BRANCH="origin/ha"
 
 get_ryu() {
     # TODO: This recommendation should be revisited after the ovs-1.10+ release
