@@ -101,11 +101,14 @@ void FlowTable::GWResolverCb(FlowTable *ft) {
     while (true) {
         PendingRoute pr;
         ft->pendingRoutes.wait_and_pop(pr);
+        if (ft->pendingRoutes.size()) {
+          syslog(LOG_INFO, "%lu in pending routes", ft->pendingRoutes.size());
+        }
 
         /* If the head of the list is in no hurry to be resolved,
          * then let's just sleep for a while until it's ready. */
         if (boost::get_system_time() < pr.time) {
-            syslog(LOG_DEBUG, "GWResolver is getting sleepy...");
+            syslog(LOG_DEBUG, "GWResolver is getting sleepy... ");
             boost::this_thread::sleep(pr.time);
         }
         pr.advance(ROUTE_COOLDOWN);
@@ -141,6 +144,10 @@ void FlowTable::GWResolverCb(FlowTable *ft) {
         }
 
         const RouteEntry& re = pr.rentry;
+        const string addr_str = re.address.toString();
+        const string mask_str = re.netmask.toString();
+        const string gw_str = re.gateway.toString();
+
         if (pr.type != RMT_DELETE
             && ft->findHost(re.gateway) == MAC_ADDR_NONE) {
             /* Host is unresolved. Attempt to resolve it. */
@@ -149,8 +156,7 @@ void FlowTable::GWResolverCb(FlowTable *ft) {
                  * queue. Routes with unresolvable gateways will constantly
                  * loop through this code, popping and re-pushing. */
                 syslog(LOG_WARNING, "An error occurred while attempting to "
-                       "resolve %s/%s.\n", re.address.toString().c_str(),
-                       re.netmask.toString().c_str());
+                       "resolve %s/%s.\n", addr_str.c_str(), mask_str.c_str());
             } else {
                 /* A resolution is scheduled, so try again later. */
                 ft->pendingRoutes.push(pr);
@@ -158,10 +164,11 @@ void FlowTable::GWResolverCb(FlowTable *ft) {
             continue;
         }
 
+        syslog(LOG_INFO, "calling sendToHw with %s/%s via %s",
+                         addr_str.c_str(), mask_str.c_str(), gw_str.c_str());
         if (ft->sendToHw(pr.type, pr.rentry) < 0) {
             syslog(LOG_WARNING, "An error occurred while pushing %s/%s.\n",
-                   re.address.toString().c_str(),
-                   re.netmask.toString().c_str());
+                   addr_str.c_str(), mask_str.c_str());
             ft->pendingRoutes.push(pr);
             continue;
         }
@@ -488,10 +495,12 @@ int FlowTable::resolveGateway(const IPAddress& gateway,
     // If we already initiated neighbour discovery for this gateway, return.
     boost::lock_guard<boost::mutex> lock(ndMutex);
     if (pendingNeighbours.find(gateway_str) != pendingNeighbours.end()) {
+        syslog(LOG_INFO, "already doing neighbour discovery for %s", gateway_str.c_str());
         return 0;
     }
 
     // Otherwise, we should go ahead and begin the process.
+    syslog(LOG_INFO, "starting neighbour discovery for %s", gateway_str.c_str());
     int sock = initiateND(gateway_str.c_str());
     if (sock == -1) {
         return -1;
@@ -597,11 +606,14 @@ int FlowTable::sendToHw(RouteModType mod, const IPAddress& addr,
 
     rm.set_mod(mod);
     rm.set_id(FlowTable::vm_id);
+    const string gw_str = gateway.toString();
 
     if (setEthernet(rm, local_iface, gateway) != 0) {
+        syslog(LOG_INFO, "cannot setEthernet for %s", gw_str.c_str());
         return -1;
     }
     if (setIP(rm, addr, mask) != 0) {
+        syslog(LOG_INFO, "cannot setIP for %s", gw_str.c_str());
         return -1;
     }
 
@@ -609,6 +621,9 @@ int FlowTable::sendToHw(RouteModType mod, const IPAddress& addr,
      * the port to determine which datapath to send to. */
     rm.add_action(Action(RFAT_OUTPUT, local_iface.port));
 
+    syslog(LOG_INFO, "sending rfserver IPC for %s/%s via %s on port %u",
+                     addr.toString().c_str(), mask.toString().c_str(),
+                     gw_str.c_str(), local_iface.port);
     this->ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, rm);
     return 0;
 }
