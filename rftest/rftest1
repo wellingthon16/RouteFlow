@@ -155,8 +155,15 @@ if [ "$ACTION" != "RESET" ]; then
     case "$ACTION" in
     POX)
         cd pox
+        RFSTATS=""
+        if [ $USE_MONGO -eq 1 ]; then
+            RFSTATS="rfstats"
+            echo_bold "-> Enabling RFStats component..."
+        else
+            echo_bold "-> Disabling RFStats component..."
+        fi
         ./pox.py log.level --=INFO topology openflow.topology \
-                 openflow.discovery rfproxy rfstats &
+                 openflow.discovery rfproxy $RFSTATS &
         cd -
         PROTOCOLS="OpenFlow10"
         ;;
