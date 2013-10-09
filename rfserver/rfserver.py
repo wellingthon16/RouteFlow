@@ -308,6 +308,14 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
                 rm.add_match(Match.ETHERTYPE(ETHERTYPE_IP))
                 rm.add_match(Match.NW_PROTO(IPPROTO_TCP))
                 rm.add_match(Match.TP_SRC(TPORT_BGP))
+            elif operation_id == DC_BGP_PASSIVEV6:
+                rm.add_match(Match.ETHERTYPE(ETHERTYPE_IPV6))
+                rm.add_match(Match.NW_PROTO(IPPROTO_TCP))
+                rm.add_match(Match.TP_DST(TPORT_BGP))
+            elif operation_id == DC_BGP_ACTIVEV6:
+                rm.add_match(Match.ETHERTYPE(ETHERTYPE_IPV6))
+                rm.add_match(Match.NW_PROTO(IPPROTO_TCP))
+                rm.add_match(Match.TP_SRC(TPORT_BGP))
             elif operation_id == DC_LDP_PASSIVE:
                 rm.add_match(Match.ETHERTYPE(ETHERTYPE_IP))
                 rm.add_match(Match.NW_PROTO(IPPROTO_TCP))
@@ -338,7 +346,9 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
             self.send_datapath_config_message(ct_id, dp_id, DC_DROP_ALL)
             self.send_datapath_config_message(ct_id, dp_id, DC_OSPF)
             self.send_datapath_config_message(ct_id, dp_id, DC_BGP_PASSIVE)
+            self.send_datapath_config_message(ct_id, dp_id, DC_BGP_PASSIVEV6)
             self.send_datapath_config_message(ct_id, dp_id, DC_BGP_ACTIVE)
+            self.send_datapath_config_message(ct_id, dp_id, DC_BGP_ACTIVEV6)
             self.send_datapath_config_message(ct_id, dp_id, DC_RIPV2)
             self.send_datapath_config_message(ct_id, dp_id, DC_ARP)
             self.send_datapath_config_message(ct_id, dp_id, DC_ICMP)
