@@ -1,7 +1,7 @@
 #!/bin/sh
 
 RYU_GIT="https://github.com/routeflow/ryu-rfproxy.git"
-RYU_BRANCH="origin/master"
+RYU_BRANCH="origin/vandervecken"
 
 RYU_DEPS="python-greenlet python-eventlet python-webob python-routes"
 RYU_VERSION="2.0"
