@@ -359,8 +359,6 @@ def genPy(messages, fname):
     g = CodeGenerator()
 
     g.addLine("import bson")    
-    g.addLine("import pymongo as mongo")
-    g.blankLine()
     for tlv in ["Match","Action","Option"]:
         g.addLine("from rflib.types.{0} import {0}".format(tlv))
     g.addLine("from MongoIPC import MongoIPCMessage")
@@ -374,6 +372,7 @@ def genPy(messages, fname):
         v += 1
     g.blankLine()
     for name, msg in messages:
+        g.blankLine()
         g.addLine("class {0}(MongoIPCMessage):".format(name))
         g.increaseIndent()
         g.addLine("def __init__(self, {0}):".format(", ".join([f + "=None" for t, f in msg])))
