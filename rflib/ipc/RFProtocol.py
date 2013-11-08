@@ -1,5 +1,4 @@
 import bson
-import pymongo as mongo
 
 from rflib.types.Match import Match
 from rflib.types.Action import Action
@@ -15,6 +14,9 @@ DATAPATH_DOWN = 3
 VIRTUAL_PLANE_MAP = 4
 DATA_PLANE_MAP = 5
 ROUTE_MOD = 6
+CONTROLLER_REGISTER = 7
+ELECT_MASTER = 8
+
 
 class PortRegister(MongoIPCMessage):
     def __init__(self, vm_id=None, vm_port=None, hwaddress=None):
@@ -81,6 +83,7 @@ class PortRegister(MongoIPCMessage):
         s += "  hwaddress: " + str(self.get_hwaddress()) + "\n"
         return s
 
+
 class PortConfig(MongoIPCMessage):
     def __init__(self, vm_id=None, vm_port=None, operation_id=None):
         self.set_vm_id(vm_id)
@@ -145,6 +148,7 @@ class PortConfig(MongoIPCMessage):
         s += "  vm_port: " + str(self.get_vm_port()) + "\n"
         s += "  operation_id: " + str(self.get_operation_id()) + "\n"
         return s
+
 
 class DatapathPortRegister(MongoIPCMessage):
     def __init__(self, ct_id=None, dp_id=None, dp_port=None):
@@ -211,6 +215,7 @@ class DatapathPortRegister(MongoIPCMessage):
         s += "  dp_port: " + str(self.get_dp_port()) + "\n"
         return s
 
+
 class DatapathDown(MongoIPCMessage):
     def __init__(self, ct_id=None, dp_id=None):
         self.set_ct_id(ct_id)
@@ -261,6 +266,7 @@ class DatapathDown(MongoIPCMessage):
         s += "  ct_id: " + format_id(self.get_ct_id()) + "\n"
         s += "  dp_id: " + format_id(self.get_dp_id()) + "\n"
         return s
+
 
 class VirtualPlaneMap(MongoIPCMessage):
     def __init__(self, vm_id=None, vm_port=None, vs_id=None, vs_port=None):
@@ -340,6 +346,7 @@ class VirtualPlaneMap(MongoIPCMessage):
         s += "  vs_id: " + format_id(self.get_vs_id()) + "\n"
         s += "  vs_port: " + str(self.get_vs_port()) + "\n"
         return s
+
 
 class DataPlaneMap(MongoIPCMessage):
     def __init__(self, ct_id=None, dp_id=None, dp_port=None, vs_id=None, vs_port=None):
@@ -433,6 +440,7 @@ class DataPlaneMap(MongoIPCMessage):
         s += "  vs_id: " + format_id(self.get_vs_id()) + "\n"
         s += "  vs_port: " + str(self.get_vs_port()) + "\n"
         return s
+
 
 class RouteMod(MongoIPCMessage):
     def __init__(self, mod=None, id=None, matches=None, actions=None, options=None):
@@ -540,4 +548,122 @@ class RouteMod(MongoIPCMessage):
         s += "  options:\n"
         for option in self.get_options():
             s += "    " + str(Option.from_dict(option)) + "\n"
+        return s
+
+
+class ControllerRegister(MongoIPCMessage):
+    def __init__(self, ct_addr=None, ct_port=None, ct_role=None):
+        self.set_ct_addr(ct_addr)
+        self.set_ct_port(ct_port)
+        self.set_ct_role(ct_role)
+
+    def get_type(self):
+        return CONTROLLER_REGISTER
+
+    def get_ct_addr(self):
+        return self.ct_addr
+
+    def set_ct_addr(self, ct_addr):
+        ct_addr = "" if ct_addr is None else ct_addr
+        try:
+            self.ct_addr = str(ct_addr)
+        except:
+            self.ct_addr = ""
+
+    def get_ct_port(self):
+        return self.ct_port
+
+    def set_ct_port(self, ct_port):
+        ct_port = 0 if ct_port is None else ct_port
+        try:
+            self.ct_port = int(ct_port)
+        except:
+            self.ct_port = 0
+
+    def get_ct_role(self):
+        return self.ct_role
+
+    def set_ct_role(self, ct_role):
+        ct_role = "" if ct_role is None else ct_role
+        try:
+            self.ct_role = str(ct_role)
+        except:
+            self.ct_role = ""
+
+    def from_dict(self, data):
+        self.set_ct_addr(data["ct_addr"])
+        self.set_ct_port(data["ct_port"])
+        self.set_ct_role(data["ct_role"])
+
+    def to_dict(self):
+        data = {}
+        data["ct_addr"] = str(self.get_ct_addr())
+        data["ct_port"] = str(self.get_ct_port())
+        data["ct_role"] = self.get_ct_role()
+        return data
+
+    def from_bson(self, data):
+        data = bson.BSON.decode(data)
+        self.from_dict(data)
+
+    def to_bson(self):
+        return bson.BSON.encode(self.get_dict())
+
+    def __str__(self):
+        s = "ControllerRegister\n"
+        s += "  ct_addr: " + str(self.get_ct_addr()) + "\n"
+        s += "  ct_port: " + str(self.get_ct_port()) + "\n"
+        s += "  ct_role: " + str(self.get_ct_role()) + "\n"
+        return s
+
+
+class ElectMaster(MongoIPCMessage):
+    def __init__(self, ct_addr=None, ct_port=None):
+        self.set_ct_addr(ct_addr)
+        self.set_ct_port(ct_port)
+
+    def get_type(self):
+        return ELECT_MASTER
+
+    def get_ct_addr(self):
+        return self.ct_addr
+
+    def set_ct_addr(self, ct_addr):
+        ct_addr = "" if ct_addr is None else ct_addr
+        try:
+            self.ct_addr = str(ct_addr)
+        except:
+            self.ct_addr = ""
+
+    def get_ct_port(self):
+        return self.ct_port
+
+    def set_ct_port(self, ct_port):
+        ct_port = 0 if ct_port is None else ct_port
+        try:
+            self.ct_port = int(ct_port)
+        except:
+            self.ct_port = 0
+
+    def from_dict(self, data):
+        self.set_ct_addr(data["ct_addr"])
+        self.set_ct_port(data["ct_port"])
+
+    def to_dict(self):
+        data = {}
+        data["ct_addr"] = str(self.get_ct_addr())
+        data["ct_port"] = str(self.get_ct_port())
+        return data
+
+    def from_bson(self, data):
+        data = bson.BSON.decode(data)
+        self.from_dict(data)
+
+    def to_bson(self):
+        return bson.BSON.encode(self.get_dict())
+
+    def __str__(self):
+        s = "ElectMaster\n"
+        s += "  ct_addr: " + str(self.get_ct_addr()) + "\n"
+        s += "  ct_port: " + str(self.get_ct_port()) + "\n"
         return s

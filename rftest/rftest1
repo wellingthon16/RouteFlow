@@ -105,7 +105,7 @@ trap "reset 0; exit 0" INT
 if [ "$ACTION" != "RESET" ]; then
     echo_bold "-> Setting up the management bridge (lxcbr0)..."
     ifconfig lxcbr0 $MONGODB_ADDR up
-    ovs-vsctl --may-exist add-port lxcbr0 rfvm1.0
+#    ovs-vsctl add-port lxcbr0 rfvm1.0
 
     echo_bold "-> Setting up MongoDB..."
     sed -i "/bind_ip/c\bind_ip = 127.0.0.1,$MONGODB_ADDR" $MONGODB_CONF
@@ -144,6 +144,10 @@ if [ "$ACTION" != "RESET" ]; then
     echo_bold "-> Starting RFServer..."
     ./rfserver/rfserver.py rftest/rftest1config.csv &
 
+    echo_bold "-> Starting RFVM1..."
+    lxc-start -n rfvm1 -d
+    sleep 3
+    
     echo_bold "-> Starting the control plane network (dp0 VS)..."
     ovs-vsctl add-br dp0
     ovs-vsctl add-port dp0 rfvm1.1
@@ -152,9 +156,6 @@ if [ "$ACTION" != "RESET" ]; then
     ovs-vsctl set Bridge dp0 protocols=$PROTOCOLS
     ovs-vsctl set-controller dp0 tcp:127.0.0.1:$CONTROLLER_PORT
     ifconfig dp0 up
-
-    echo_bold "-> Starting RFVM1..."
-    lxc-start -n rfvm1 -d
 
     echo_bold "-> Starting the sample network..."
     # Start the host VMs and give them a little time

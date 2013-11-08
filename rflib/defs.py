@@ -3,6 +3,7 @@ MONGO_DB_NAME = "db"
 
 RFCLIENT_RFSERVER_CHANNEL = "rfclient<->rfserver"
 RFSERVER_RFPROXY_CHANNEL = "rfserver<->rfproxy"
+RFMONITOR_RFPROXY_CHANNEL = "rfmonitor<->rfproxy"
 
 RFTABLE_NAME = "rftable"
 RFCONFIG_NAME = "rfconfig"
@@ -11,6 +12,7 @@ RFISLCONF_NAME = "rfislconf"
 
 RFSERVER_ID = "rfserver"
 RFPROXY_ID = "rfproxy"
+RFMONITOR_ID = "rfmonitor"
 
 DEFAULT_RFCLIENT_INTERFACE = "eth0"
 
