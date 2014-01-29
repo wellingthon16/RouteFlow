@@ -20,6 +20,11 @@ chroot $LXCDIR/base/rootfs apt-get update
 chroot $LXCDIR/base/rootfs apt-get -y --force-yes install quagga libboost-thread-dev libboost-system-dev libboost-filesystem-dev libboost-program-options-dev rsyslog vlan tcpdump
 # !!!
 
+if [ -e /usr/local/lib/libzmq.so ]; then
+    cp /usr/local/lib/libzmq.so $LXCDIR/base/rootfs/usr/lib
+    chroot $LXCDIR/base/rootfs ldconfig
+fi
+
 # Clone the base container to make other containers based on config
 cd $CONFIG
 for VM in *

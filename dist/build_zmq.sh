@@ -10,20 +10,22 @@ ZMQ_BRANCH="master"
 # $1 - Version string or "git"
 ##
 build_zmq() {
-    if [ -e "mongodb-src-r$1" ] && [ $UPDATE -eq 0 ]; then
+    if [ -e "zeromq-$1" ] && [ $UPDATE -eq 0 ]; then
         return;
     fi
 
     fetch "zeromq-" $1 $ZMQ_GIT $ZMQ_BRANCH $ZMQ_URL ||
         fail "Couldn't fetch MongoDB"
 
-    $DO ./configure || fail "Couldn't configure ZeroMQ"
-    $DO make || fail "Couldn't build ZeroMQ"
-    $SUPER make install || fail "Couldn't install ZeroMQ"
-    $SUPER ldconfig
-    $DO cd ..
+    if [ $FETCH_ONLY -ne 1 ]; then
+        $SUPER pip install pyzmq==13.1.0
 
-    $SUPER pip install pyzmq==13.1.0
+        $DO ./configure || fail "Couldn't configure ZeroMQ"
+        $DO make || fail "Couldn't build ZeroMQ"
+        $SUPER make install || fail "Couldn't install ZeroMQ"
+        $SUPER ldconfig
+        $DO cd ..
+    fi
 }
 
 get_zmq() {
