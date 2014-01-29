@@ -77,8 +77,11 @@ fetch() {
         fi
         if [ $FETCH_ONLY -ne 1 ]; then
             $DO tar xzf ${NAME}.tar.gz || return 1
-            $DO cd $NAME || return 1
         fi
+    fi
+
+    if [ -e $NAME ] && [ $FETCH_ONLY -ne 1 ]; then
+        $DO cd $NAME
     fi
 
     return 0
