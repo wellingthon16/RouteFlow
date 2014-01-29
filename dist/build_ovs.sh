@@ -4,8 +4,9 @@ OVS_URL="http://openvswitch.org/releases"
 OVS_GIT="git://openvswitch.org/openvswitch"
 OVS_BRANCH="origin/master"
 
-OVS_BINARY="openvswitch-switch openvswitch-datapath-source \
-    linux-headers-generic module-assistant"
+OVS_COMMON="linux-headers-generic"
+OVS_BUILD_DEPS="dh-autoreconf pkg-config"
+OVS_BINARY="openvswitch-switch openvswitch-datapath-source module-assistant"
 
 install_ovs() {
     print_status "Installing Open vSwitch"
@@ -64,11 +65,13 @@ build_ovs() {
 }
 
 get_ovs() {
+    pkg_install "$OVS_COMMON"
     if [ "$1" = "deb" ]; then
         pkg_install "$OVS_BINARY"
         $SUPER module-assistant prepare
         $SUPER module-assistant auto-install openvswitch-datapath
     else
+        pkg_install "$OVS_BUILD_DEPS"
         build_ovs $@
     fi
 }
