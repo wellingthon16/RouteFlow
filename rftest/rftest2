@@ -11,7 +11,11 @@ MONGODB_CONF=/etc/mongodb.conf
 MONGODB_PORT=27017
 MONGODB_ADDR=192.168.10.1
 CONTROLLER_PORT=6633
-RF_HOME=..
+if [ -d ./build ]; then
+    RF_HOME=$PWD
+else
+    RF_HOME=..
+fi
 export PATH=$PATH:/usr/local/bin:/usr/local/sbin
 export PYTHONPATH=$PYTHONPATH:$RF_HOME
 
