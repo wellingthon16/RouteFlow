@@ -11,7 +11,7 @@ CONFIG="config"
 # Setup LXC and base container
 apt-get -y --force-yes install lxc
 mkdir -p $LXCDIR
-lxc-create -t ubuntu -n base
+lxc-create -t ubuntu -n base || exit 1
 
 chroot $LXCDIR/base/rootfs apt-get update
 # !!!

@@ -157,7 +157,7 @@ build_routeflow() {
                 fi
             fi
             $SUPER mount none -t cgroup /cgroup
-            $SUPER ./create
+            $SUPER ./create || fail "Couldn't install VMs"
             $DO cd -
         fi
     fi
