@@ -21,8 +21,8 @@ install_ovs() {
 
     status=$?
     if [ $status -eq 1 ]; then
-        $SUPER echo "openvswitch" >>/etc/modules || return 1
-        if [ $status -ne 0 ]; then
+        $SUPER echo "openvswitch" >>/etc/modules
+        if [ $? -ne 0 ]; then
             print_status "Can't add openvswitch_mod to /etc/modules" $YELLOW
         fi
     fi
@@ -54,7 +54,8 @@ build_ovs() {
             ./boot.sh || fail "Couldn't bootstrap Open vSwitch"
         fi
         if [ ! -e "Makefile" ]; then
-            $DO ./configure --with-linux=/lib/modules/`uname -r`/build ||
+            $DO ./configure --with-linux=/lib/modules/`uname -r`/build \
+                --enable-silent-rules --silent ||
                 fail "Couldn't configure Open vSwitch"
         fi
         $DO make || fail "Couldn't build Open vSwitch"
