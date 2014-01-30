@@ -66,8 +66,8 @@ fetch() {
         $DO cd $NAME
         if [ $UPDATE -eq 1 ]; then
             $DO git fetch || return 1
-            $DO git checkout $4 || return 1
         fi
+        $DO git checkout $4 || return 1
         if [ $FETCH_ONLY -eq 1 ]; then
             $DO cd -
         fi
