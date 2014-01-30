@@ -261,7 +261,7 @@ void usage(char *name) {
            "RFClient subscribes to kernel updates and pushes these to \n"
            "RFServer for further processing.\n\n"
            "Arguments:\n"
-           "  -a <address>      Specify the MongoDB address\n"
+           "  -a <address>      Specify the address for RFServer\n"
            "  -i <interface>    Specify which interface to use for client ID\n"
            "  -f                Use the FPM interface for route updates\n"
            "  -n <id>           Manually specify client ID in hex\n\n"
