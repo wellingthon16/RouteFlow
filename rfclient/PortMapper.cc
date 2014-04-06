@@ -54,67 +54,68 @@ void PortMapper::send_port_map(Interface &iface) {
  * Returns the number of characters sent, or -1 on failure.
  */
 int PortMapper::send_packet(const char ethName[], uint8_t port) {
-    char buffer[BUFFER_SIZE];
-    char error[BUFSIZ];
+    char msg[BUFFER_SIZE];
+    char buffer[BUFSIZ];
     uint16_t ethType;
     struct ifreq req;
     struct sockaddr_ll sll;
     uint8_t srcAddress[IFHWADDRLEN];
     uint8_t dstAddress[IFHWADDRLEN] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+    int ifindex, addrLen, SockFd;
+    int error = -1;
 
-    int SockFd = socket(PF_PACKET, SOCK_RAW, htons(RF_ETH_PROTO));
+    SockFd = socket(PF_PACKET, SOCK_RAW, htons(RF_ETH_PROTO));
 
+    memset(&req, 0, sizeof(req));
     strcpy(req.ifr_name, ethName);
-
     if (ioctl(SockFd, SIOCGIFFLAGS, &req) < 0) {
-        strerror_r(errno, error, BUFSIZ);
-        syslog(LOG_ERR, "ioctl(SIOCGIFFLAGS): %s", error);
-        return -1;
+        goto exit;
     }
 
     /* If the interface is down we can't send the packet. */
-    printf("FLAG %d\n", req.ifr_flags & IFF_UP);
-    if (!(req.ifr_flags & IFF_UP))
-        return -1;
+    syslog(LOG_INFO, "FLAG %d\n", req.ifr_flags & IFF_UP);
+    if (!(req.ifr_flags & IFF_UP)) {
+        goto exit;
+    }
 
     /* Get the interface index. */
     if (ioctl(SockFd, SIOCGIFINDEX, &req) < 0) {
-        strerror_r(errno, error, BUFSIZ);
-        syslog(LOG_ERR, "ioctl(SIOCGIFINDEX): %s", error);
-        return -1;
+        goto exit;
     }
 
-    int ifindex = req.ifr_ifindex;
-    int addrLen = sizeof(struct sockaddr_ll);
-
+    /* Get the MAC address. */
+    ifindex = req.ifr_ifindex;
     if (ioctl(SockFd, SIOCGIFHWADDR, &req) < 0) {
-        strerror_r(errno, error, BUFSIZ);
-        syslog(LOG_ERR, "ioctl(SIOCGIFHWADDR): %s", error);
-        return -1;
+        goto exit;
     }
-    int i;
-    for (i = 0; i < IFHWADDRLEN; i++)
-        srcAddress[i] = (uint8_t) req.ifr_hwaddr.sa_data[i];
+    memcpy(srcAddress, req.ifr_hwaddr.sa_data, IFHWADDRLEN);
 
+    /* Bind to the socket. */
     memset(&sll, 0, sizeof(struct sockaddr_ll));
     sll.sll_family = PF_PACKET;
     sll.sll_ifindex = ifindex;
-
+    addrLen = sizeof(sll);
     if (bind(SockFd, (struct sockaddr *) &sll, addrLen) < 0) {
-        strerror_r(errno, error, BUFSIZ);
-        syslog(LOG_ERR, "bind(): %s", error);
-        return -1;
+        goto exit;
     }
 
-    memset(buffer, 0, BUFFER_SIZE);
-
-    memcpy((void *) buffer, (void *) dstAddress, IFHWADDRLEN);
-    memcpy((void *) (buffer + IFHWADDRLEN), (void *) srcAddress, IFHWADDRLEN);
+    /* Construct the packet and send it. */
+    memset(msg, 0, BUFFER_SIZE);
+    memcpy((void *) msg, (void *) dstAddress, IFHWADDRLEN);
+    memcpy((void *) (msg + IFHWADDRLEN), (void *) srcAddress, IFHWADDRLEN);
     ethType = htons(RF_ETH_PROTO);
-    memcpy((void *) (buffer + 2 * IFHWADDRLEN), (void *) &ethType,
+    memcpy((void *) (msg + 2 * IFHWADDRLEN), (void *) &ethType,
             sizeof(uint16_t));
-    memcpy((void *) (buffer + 14), (void *) &this->id, sizeof(uint64_t));
-    memcpy((void *) (buffer + 22), (void *) &port, sizeof(uint8_t));
-    return (sendto(SockFd, buffer, BUFFER_SIZE, 0, (struct sockaddr *) &sll,
-            (socklen_t) addrLen));
+    memcpy((void *) (msg + 14), (void *) &this->id, sizeof(uint64_t));
+    memcpy((void *) (msg + 22), (void *) &port, sizeof(uint8_t));
+    error = (sendto(SockFd, msg, BUFFER_SIZE, 0, (struct sockaddr *) &sll,
+             (socklen_t) addrLen));
+
+exit:
+    if (error) {
+        strerror_r(errno, buffer, BUFSIZ);
+        syslog(LOG_ERR, "send_packet(): %s", buffer);
+    }
+    close(SockFd);
+    return error;
 }
