@@ -76,11 +76,6 @@ class DefaultRouteModTranslator(RouteModTranslator):
         # delete all groups
         rm = RouteMod(RMT_DELETE_GROUP, self.dp_id)
         rms.append(rm)
-        # default group - send to controller
-        rm = RouteMod(RMT_ADD_GROUP, self.dp_id)
-        rm.set_group(CONTROLLER_GROUP);
-        rm.add_action(Action.CONTROLLER())
-        rms.append(rm)
         
         # delete all flows
         rm = RouteMod(RMT_DELETE, self.dp_id)
@@ -94,14 +89,14 @@ class DefaultRouteModTranslator(RouteModTranslator):
         # ARP
         rm = RouteMod(RMT_ADD, self.dp_id)
         rm.add_match(Match.ETHERTYPE(ETHERTYPE_ARP))
-        rm.add_action(Action.GROUP(CONTROLLER_GROUP))
+        rm.add_action(Action.CONTROLLER())
         rm.add_option(self.CONTROLLER_PRIORITY)
         rms.append(rm)
 
         return rms
 
     def handle_controller_route_mod(self, entry, rm):
-        rm.add_action(Action.GROUP(CONTROLLER_GROUP))
+        rm.add_action(Action.CONTROLLER())
         return [rm]
 
     def handle_route_mod(self, entry, rm):
@@ -133,7 +128,8 @@ class DefaultRouteModTranslator(RouteModTranslator):
 class SatelliteRouteModTranslator(DefaultRouteModTranslator):
 
     def __init__(self, dp_id, ct_id, rftable, isltable):
-        super(SatelliteRouteModTranslator, self).__init__(dp_id, ct_id, rftable, isltable)
+        super(SatelliteRouteModTranslator, self).__init__(
+            dp_id, ct_id, rftable, isltable)
         self.sent_isl_flows = set()
 
     def handle_isl_route_mod(self, r, rm):
@@ -165,7 +161,8 @@ class NoviFlowMultitableRouteModTranslator(RouteModTranslator):
     ETHER_TABLE = 1
 
     def __init__(self, dp_id, ct_id, rftable, isltable):
-        super(NoviFlowMultitableRouteModTranslator, self).__init__(dp_id, ct_id, rftable, isltable)
+        super(NoviFlowMultitableRouteModTranslator, self).__init__(
+            dp_id, ct_id, rftable, isltable)
 
     def _send_rm_with_matches(self, rm, out_port, entries):
         rms = []
