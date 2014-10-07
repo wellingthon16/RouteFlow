@@ -16,7 +16,7 @@ INTERNAL_SEND_CHANNEL = "inproc://sender"
 INTERNAL_PUBLISH_CHANNEL = "inproc://channeler"
 
 _logger = logging.getLogger(__name__)
-_logger.setLevel(logging.DEBUG)
+_logger.setLevel(logging.INFO)
 
 class ZeroMQIPCMessageService(IPC.IPCMessageService):
     def __init__(self, address, id_, threading_, bind):
