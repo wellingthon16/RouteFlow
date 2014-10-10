@@ -3,6 +3,7 @@
 
 #include <list>
 #include <map>
+#include <set>
 #include <stdint.h>
 #include <boost/thread.hpp>
 #include "libnetlink.hh"
@@ -24,6 +25,8 @@
 
 using namespace std;
 
+const int nl_buffersize = 128 * 1024 * 1024;
+
 typedef enum route_source {
     RS_NETLINK,
     RS_FPM,
@@ -31,7 +34,9 @@ typedef enum route_source {
 
 class FlowTable {
     public:
-        FlowTable(uint64_t vm_id, InterfaceMap*, IPCMessageService*,
+        FlowTable(uint64_t vm_id,
+                  InterfaceMap *ifMap,
+                  SyncQueue<RouteMod> *rm_q,
                   RouteSource src);
         FlowTable(const FlowTable&);
 
@@ -42,6 +47,7 @@ class FlowTable {
         void interrupt();
         void print_test();
 
+        void sendRm(RouteMod rm);
         int updateHostTable(struct nlmsghdr*);
         int updateRouteTable(struct nlmsghdr*);
         void updateNHLFE(nhlfe_msg_t *nhlfe_msg);
@@ -50,7 +56,7 @@ class FlowTable {
     private:
         RouteSource source;
         InterfaceMap* ifMap;
-        IPCMessageService* ipc;
+        SyncQueue<RouteMod> *rm_q;
         uint64_t vm_id;
 
         boost::thread GWResolver;
@@ -70,6 +76,9 @@ class FlowTable {
 
         /* Routing table. */
         map<string, RouteEntry> routeTable;
+
+        /* Routes with unresolved nexthops */
+        set<string> unresolvedRoutes;
 
         /* Cached neighbour discovery sockets */
         map<string, int> pendingNeighbours;

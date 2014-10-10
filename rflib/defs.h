@@ -20,6 +20,7 @@
 #define IS_RFVS(dp_id) !((dp_id >> 32) ^ RFVS_PREFIX)
 
 #define RF_ETH_PROTO 0x0A0A /* RF ethernet protocol */
+#define ETHERTYPE_ARP 0x0806
 
 #define VLAN_HEADER_LEN 4
 #define ETH_HEADER_LEN 14
@@ -34,13 +35,18 @@
 typedef enum route_mod_type {
 	RMT_ADD,			/* Add flow to datapath */
 	RMT_DELETE,			/* Remove flow from datapath */
-	RMT_CONTROLLER,			/* Send this flow unchanged to the datapath. */
+	RMT_CONTROLLER,			/* Add flow to datapath, output to controller */
+        RMT_ADD_GROUP,                  /* Add group to datapath */
+        RMT_DELETE_GROUP,               /* Remove group from datapath */
+	/* Future implementation */
+	//RMT_MODIFY		/* Modify existing flow (Unimplemented) */
 } RouteModType;
 
 typedef enum port_config_type {
     PCT_MAP_REQUEST,    /* (deprecated) Request for a mapping packet. */
     PCT_RESET,          /* Reset the client port to inactive. */
     PCT_MAP_SUCCESS,    /* Mapping was successful; port can be brought up. */
+    PCT_ROUTEMOD_ACK,
 } PortModType;
 
 #define PC_MAP 0
@@ -54,5 +60,7 @@ typedef enum port_config_type {
 
 #define TPORT_BGP 0x00B3
 #define OFPP_CONTROLLER 0xFFFFFFFD
+
+#define CONTROLLER_GROUP 1
 
 #endif /* __DEFS_H__ */
