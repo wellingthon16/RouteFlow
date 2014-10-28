@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set to 0 to use external switch(es)
-STARTBVMS=1
+MODE="STARTBVMS"
 
 # If rfserverconfig.csv and rfserverinternal.csv exist in /home/projectw,
 # use them and don't try to configure rfvm1. If they do not exist, use values
@@ -39,22 +39,40 @@ if [ "$EUID" != "0" ]; then
   exit 1
 fi
 
-ACTION=""
-case "$1" in
---ryu)
-    ACTION="RYU"
-    ;;
---reset)
-    ACTION="RESET"
-    ;;
-*)
+for i in "$@"
+do
+    case $i in
+    --ryu)
+        ACTION="RYU"
+        echo "action is ryu"
+        ;;
+    --reset)
+        ACTION="RESET"
+        ;;
+    --novms)
+        MODE="NOVMS"
+        ;;
+    --pingtest)
+        MODE="PINGTEST"
+        ;;
+    *)
     echo "Invalid argument: $1"
     echo "Options: "
     echo "    --ryu: run using RYU"
     echo "    --reset: stop running and clear data from previous executions"
+    echo "    --novms: start the controller but not the virtual network"
+    echo "    --pingtest: verify connectivity between hosts on the virtual network"
     exit
     ;;
-esac
+    esac
+done
+
+if [ -z "$ACTION" ]; then
+    echo "You must specify an action:"
+    echo "    --reset: stop running and clear data from previous executions"
+    echo "    --ryu: run using RYU"
+    exit
+fi
 
 cd $RF_HOME
 
@@ -133,6 +151,23 @@ start_sample_vms() {
     echo_bold "Login and run:"
     echo_bold "  $ ping $DPPORTNET.2.2"
     echo_bold "  $ ping $DPPORTNETV6:2:2"
+}
+
+start_ping_test() {
+    echo_bold "-> Testing connectivity between hosts on a virtual network"
+    cd rftest
+
+    if python pingtest.py; then
+        echo_bold "Tests successful"
+        reset 0
+        exit
+    else
+        echo_bold "Tests failed"
+        reset 0
+        exit
+    fi
+
+    cd - &> /dev/null
 }
 
 default_config() {
@@ -342,9 +377,14 @@ if [ "$ACTION" != "RESET" ]; then
       sleep 1
     done
 
-    if [ $STARTBVMS -eq 1 ] ; then
+    case "$MODE" in
+    STARTBVMS)
       start_sample_vms
-    fi
+      ;;
+    PINGTEST)
+      start_ping_test
+      ;;
+    esac
     echo_bold "You can stop this test by pressing Ctrl+C."
     wait
 fi
