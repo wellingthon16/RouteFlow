@@ -10,6 +10,11 @@ DPPORTNET=172.31
 DPPORTNETV6=fc00::
 DPPORTS=2
 SWITCH1DPID=0x99
+# Multi-table datapaths are listed by 'DPID/vendor' to allow the proper
+# flow mods to be sent for each vendor's pipeline.
+# Examples:
+#    MULTITABLEDPS="0x99/corsa"
+#    MULTITABLEDPS="0x99/noviflow"
 MULTITABLEDPS="''"
 SATELLITEDPS="''"
 
