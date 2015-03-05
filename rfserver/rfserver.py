@@ -478,14 +478,25 @@ class CorsaMultitableRouteModTranslator(RouteModTranslator):
         return rms
 
 class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
+    VENDOR_CLASSES = {
+        "noviflow" : NoviFlowMultitableRouteModTranslator,
+        "corsa"    : CorsaMultitableRouteModTranslator,
+    }
 
     def __init__(self, configfile, islconffile, multitabledps, satellitedps):
         self.config = RFConfig(configfile)
         self.islconf = RFISLConf(islconffile)
         try:
-            self.multitabledps = set([int(x, 16) for x in multitabledps.split(",")])
-        except ValueError:
-            self.multitabledps = set()
+            # Split out records assuming a format of: "dpid/vendor,dpid/vendor, ..."
+            dp_vendor_pairs = [dpv.split("/") for dpv in multitabledps.split(",")]
+            # Convert the dpids from strings to ints
+            dp_vendor_pairs = map(lambda x: [int(x[0], 16), x[1]], dp_vendor_pairs)
+            # Map vendor names to RouteModTranslator subclass to detect config errors early
+            dp_vendor_pairs = map(lambda x: [x[0], RFServer.VENDOR_CLASSES[x[1]]], dp_vendor_pairs)
+            self.multitabledps = dict(dp_vendor_pairs)
+        except (ValueError,IndexError,KeyError):
+            print "Error parsing multitabledps list '%s'.  Ignored." % multitabledps
+            self.multitabledps = dict()
         try:
             self.satellitedps = set([int(x, 16) for x in satellitedps.split(",")])
         except ValueError:
@@ -759,7 +770,8 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
                 if dp_id not in self.route_mod_translator:
                     self.log.info("Configuring datapath (dp_id=%s)" % format_id(dp_id))
                     if dp_id in self.multitabledps:
-                        self.route_mod_translator[dp_id] = NoviFlowMultitableRouteModTranslator(
+                        vendor_class = self.multitabledps[dp_id]
+                        self.route_mod_translator[dp_id] = vendor_class(
                             dp_id, ct_id, self.rftable, self.isltable, self.log)
                     elif dp_id in self.satellitedps:
                         self.route_mod_translator[dp_id] = SatelliteRouteModTranslator(
@@ -839,7 +851,8 @@ if __name__ == "__main__":
     parser.add_argument('-i', '--islconfig', default=islconf,
                         help='ISL mapping configuration file')
     parser.add_argument('-m', '--multitabledps', default='',
-                        help='List of datapaths that support multiple tables')
+                        help='List of datapaths ("dpid/vendor") that support multiple tables '
+                             '[supported vendors: %s]' % RFServer.VENDOR_CLASSES.keys())
     parser.add_argument('-s', '--satellitedps', default='',
                         help='List of datapaths that default forward to ISL peer')
 
