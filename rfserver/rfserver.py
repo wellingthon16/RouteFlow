@@ -313,7 +313,7 @@ class CorsaMultitableRouteModTranslator(RouteModTranslator):
         rms.append(rm)
 
         # default drop
-        for table_id in (0, self.VLAN_MPLS_TABLE, self.VLAN_TABLE,
+        for table_id in (0, self.VLAN_TABLE,
                          self.ETHER_TABLE, self.FIB_TABLE):
             rm = RouteMod(RMT_ADD, self.dp_id)
             rm.set_table(table_id)
@@ -328,18 +328,6 @@ class CorsaMultitableRouteModTranslator(RouteModTranslator):
         rms.append(rm)
 
         ## VLAN/MPLS table 1
-        rm = RouteMod(RMT_ADD, self.dp_id)
-        rm.set_table(self.VLAN_MPLS_TABLE)
-        rm.add_match(Match.ETHERTYPE(ETHERTYPE_IP))
-        rm.add_action(Action.GOTO(self.VLAN_TABLE))
-        rm.add_option(self.CONTROLLER_PRIORITY)
-        rms.append(rm)
-        rm = RouteMod(RMT_ADD, self.dp_id)
-        rm.set_table(self.VLAN_MPLS_TABLE)
-        rm.add_match(Match.ETHERTYPE(ETHERTYPE_ARP))
-        rm.add_action(Action.GOTO(self.VLAN_TABLE))
-        rm.add_option(self.CONTROLLER_PRIORITY)
-        rms.append(rm)
         rm = RouteMod(RMT_ADD, self.dp_id)
         rm.set_table(self.VLAN_MPLS_TABLE)
         rm.add_match(Match.ETHERTYPE(0x8100))
