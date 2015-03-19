@@ -371,6 +371,7 @@ class CorsaMultitableRouteModTranslator(RouteModTranslator):
         return rms
 
     def _send_rm_with_matches(self, rm, out_port, entries):
+        OFPVID_PRESENT = 0x1000
         rms = []
         for entry in entries:
             if out_port != entry.dp_port:
@@ -386,7 +387,7 @@ class CorsaMultitableRouteModTranslator(RouteModTranslator):
                             dst_eth = action.get_value()
                         elif action_type == 'RFAT_SWAP_VLAN_ID':
                             vlan_id = action.get_value()
-                            action = Action.SET_VLAN_ID(vlan_id)
+                            action = Action.SET_VLAN_ID(vlan_id | OFPVID_PRESENT)
                         rm.add_action(action)
                     if dst_eth not in self.actions_to_groupid:
                         self.last_groupid += 1
