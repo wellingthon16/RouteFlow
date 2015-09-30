@@ -21,6 +21,7 @@ from rflib.defs import *
 from rflib.types.Match import *
 from rflib.types.Action import *
 from rflib.types.Option import *
+from rflib.types.Band import *
 
 from rftable import *
 
@@ -491,12 +492,24 @@ class CorsaMultitableRouteModTranslator_v3(RouteModTranslator):
     def configure_datapath(self):
         rms = []
 
+        # delete all meters
+        rm = RouteMod(RMT_DELETE_METER, self.dp_id)
+        rms.append(rm)
+
         # delete all groups
         rm = RouteMod(RMT_DELETE_GROUP, self.dp_id)
         rms.append(rm)
 
         # delete all flows
         rm = RouteMod(RMT_DELETE, self.dp_id)
+        rms.append(rm)
+
+        # default meter
+        rm = RouteMod(RMT_ADD_METER, self.dp_id)
+        rm.set_meter(1)
+        rm.set_flags(METER_FLAG_KBPS|METER_FLAG_STATS)
+        MAX_RATE = 0xFFFFFFFF
+        rm.add_band(Band.DROP(MAX_RATE))
         rms.append(rm)
 
         # default drop
