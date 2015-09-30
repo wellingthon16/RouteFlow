@@ -472,12 +472,14 @@ class CorsaMultitableRouteModTranslator_v3(RouteModTranslator):
     CONTROLLER_PRIORITY = Option.PRIORITY(255)
     DEFAULT_PRIORITY = Option.PRIORITY(PRIORITY_LOWEST + PRIORITY_BAND + 1)
 
-    VLAN_MPLS_TABLE = 1
-    VLAN_TABLE = 2
-    MPLS_TABLE = 3 # not currently implemented
-    ETHER_TABLE = 4
-    COS_MAP_TABLE = 5
-    FIB_TABLE = 6
+    PORT_BASED_PROTO_TABLE = 0
+    VLAN_CHECK_TABLE = 1
+    VLAN_MAC_XLATE_TABLE = 2
+    VLAN_CIRCUIT_TABLE = 3
+    PRIORITY_MAP_TABLE = 4
+    L3_IF_MAC_DA_TABLE = 5
+    ETHER_TABLE = 6
+    FIB_TABLE = 7
     LOCAL_TABLE = 9
 
     def __init__(self, dp_id, ct_id, rftable, isltable, log):
@@ -498,33 +500,55 @@ class CorsaMultitableRouteModTranslator_v3(RouteModTranslator):
         rms.append(rm)
 
         # default drop
-        for table_id in (0, self.VLAN_TABLE,
-                         self.ETHER_TABLE, self.FIB_TABLE):
+        for table_id in (self.VLAN_CIRCUIT_TABLE,
+                         self.L3_IF_MAC_DA_TABLE,
+                         self.ETHER_TABLE,
+                         self.FIB_TABLE,
+                         self.LOCAL_TABLE):
             rm = RouteMod(RMT_ADD, self.dp_id)
             rm.set_table(table_id)
             rm.add_option(self.DROP_PRIORITY)
             rms.append(rm)
 
-        ## Table 0
+        ## Port Based Protocol Table 0
         rm = RouteMod(RMT_ADD, self.dp_id)
+        rm.set_table(self.PORT_BASED_PROTO_TABLE)
+        rm.add_action(Action.GOTO(self.VLAN_CHECK_TABLE))
+        rm.add_option(self.DROP_PRIORITY)
+        rms.append(rm)
+
+        ## TODO VLAN Check Table 1 (immutable)
+        # Tagged packets to VLAN_MAC_XLATE
+        # Drop untagged packets
+
+        ## VLAN MAC XLATE Table 2
+        rm = RouteMod(RMT_ADD, self.dp_id)
+        rm.set_table(self.VLAN_MAC_XLATE_TABLE)
+        rm.add_action(Action.GOTO(self.VLAN_CIRCUIT_TABLE))
+        rm.add_option(self.DROP_PRIORITY)
+        rms.append(rm)
+
+        ## VLAN CIRCUIT Table 3
+        # only default drop rule
+
+        ## PRIORITY MAP Table 4
+        # Clear actions
+        rm = RouteMod(RMT_ADD, self.dp_id)
+        rm.set_table(self.PRIORITY_MAP_TABLE)
+        rm.add_action(Action.CLEAR_DEFERRED())
+        rm.add_option(self.DROP_PRIORITY)
+        rms.append(rm)
+
+        ## L3 Interface MAC DA Table 5
+        # Allow MAC broadcast frames on all ports
+        rm = RouteMod(RMT_ADD, self.dp_id)
+        rm.set_table(self.L3_IF_MAC_DA_TABLE)
         rm.add_match(Match.ETHERNET("ff:ff:ff:ff:ff:ff"))
-        rm.add_action(Action.GOTO(self.VLAN_MPLS_TABLE))
+        rm.add_action(Action.GOTO(self.ETHER_TABLE))
         rm.add_option(self.CONTROLLER_PRIORITY)
         rms.append(rm)
 
-        ## VLAN/MPLS table 1
-        rm = RouteMod(RMT_ADD, self.dp_id)
-        rm.set_table(self.VLAN_MPLS_TABLE)
-        rm.add_match(Match.ETHERTYPE(0x8100))
-        rm.add_action(Action.GOTO(self.VLAN_TABLE))
-        rm.add_option(self.CONTROLLER_PRIORITY)
-        rms.append(rm)
-
-        ## VLAN table 2
-        # no default flows other than drop.
-
-        ## Ether type table 3
-        # ARP
+        ## Ethertype Table 6
         rm = RouteMod(RMT_ADD, self.dp_id)
         rm.set_table(self.ETHER_TABLE)
         rm.add_match(Match.ETHERTYPE(ETHERTYPE_ARP))
@@ -535,18 +559,15 @@ class CorsaMultitableRouteModTranslator_v3(RouteModTranslator):
         rm = RouteMod(RMT_ADD, self.dp_id)
         rm.set_table(self.ETHER_TABLE)
         rm.add_match(Match.ETHERTYPE(ETHERTYPE_IP))
-        rm.add_option(self.CONTROLLER_PRIORITY)
-        rm.add_action(Action.GOTO(self.COS_MAP_TABLE))
-        rms.append(rm)
-
-        # COS table 5 (just map to FIB table)
-        rm = RouteMod(RMT_ADD, self.dp_id)
-        rm.set_table(self.COS_MAP_TABLE)
         rm.add_action(Action.GOTO(self.FIB_TABLE))
-        rm.add_option(self.DROP_PRIORITY)
+        rm.add_option(self.CONTROLLER_PRIORITY)
         rms.append(rm)
 
-        ## Local table temporary catch-all entry (table 9)
+        ## FIB Table 7
+        # only default drop rule
+
+        ## Local (destined to router) Table 9
+        # For now, allow all protocols to be sent to controller/router
         rm = RouteMod(RMT_ADD, self.dp_id)
         rm.set_table(self.LOCAL_TABLE)
         rm.add_action(Action.CONTROLLER())
@@ -585,7 +606,7 @@ class CorsaMultitableRouteModTranslator_v3(RouteModTranslator):
                         self.log.info("adding new group %u for Ethernet destination %s" % (
                             new_groupid, dst_eth))
                     rm.set_actions(None)
-                    rm.add_action(Action.GROUP(self.actions_to_groupid[dst_eth]))
+                    rm.add_action(Action.GROUP_DEFERRED(self.actions_to_groupid[dst_eth]))
                     rms.append(rm)
                     break
         return rms
@@ -616,21 +637,24 @@ class CorsaMultitableRouteModTranslator_v3(RouteModTranslator):
 
         if dst_vlan is not None:
             vlan_rm = RouteMod(RMT_ADD, self.dp_id)
-            vlan_rm.set_table(self.VLAN_TABLE)
+            vlan_rm.set_table(self.VLAN_CIRCUIT_TABLE)
             vlan_rm.add_match(Match.IN_PORT(entry.dp_port))
             vlan_rm.add_match(Match.VLAN_ID(dst_vlan))
-            vlan_rm.add_action(Action.STRIP_VLAN_DEFERRED())
-            vlan_rm.add_action(Action.GOTO(self.ETHER_TABLE))
+            vlan_rm.add_action(Action.SET_VLAN_PCP(7))
+            vlan_rm.add_action(Action.SET_QUEUE(0))
+            vlan_rm.add_action(Action.APPLY_METER(1))
+            vlan_rm.add_action(Action.GOTO(self.L3_IF_MAC_DA_TABLE))
             vlan_rm.add_option(self.CONTROLLER_PRIORITY)
-            self.log.info("adding new VLAN strip rule for VLAN %s" % (dst_vlan))
             rms.append(vlan_rm)
 
         if dl_dst is not None:
             hw_rm = RouteMod(RMT_CONTROLLER, entry.dp_id)
+            hw_rm.set_table(self.L3_IF_MAC_DA_TABLE)
             hw_rm.set_id(rm.get_id())
             hw_rm.set_vm_port(rm.get_vm_port())
+            hw_rm.add_match(Match.IN_PORT(entry.dp_port))
             hw_rm.add_match(dl_dst)
-            hw_rm.add_action(Action.GOTO(self.VLAN_MPLS_TABLE))
+            hw_rm.add_action(Action.GOTO(self.ETHER_TABLE))
             hw_rm.add_option(self.DEFAULT_PRIORITY)
             rms.append(hw_rm)
 
