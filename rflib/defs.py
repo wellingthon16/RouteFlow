@@ -53,6 +53,8 @@ RMT_DELETE = 1			# Remove flow from datapath
 RMT_CONTROLLER = 2	        # Add flow to datapath, output to datapath's controller
 RMT_ADD_GROUP = 3		# Add group to datapath
 RMT_DELETE_GROUP = 4		# Delete group from datapath
+RMT_ADD_METER = 5		# Add meter from datapath
+RMT_DELETE_METER = 6		# Delete meter from datapath
 #RMT_MODIFY = 99                # Modify existing flow (Unimplemented)
 
 # Port Configuration Types
@@ -93,3 +95,8 @@ PRIORITY_HIGH = 0x8020
 PRIORITY_HIGHEST = 0xC030
 
 CONTROLLER_GROUP = 1
+
+METER_FLAG_KBPS = 1 << 0
+METER_FLAG_PKTPS = 1 << 1
+METER_FLAG_BURST = 1 << 2
+METER_FLAG_STATS = 1 << 3

@@ -17,6 +17,8 @@ typesMap = {
 "action[]": "std::vector<Action>",
 "option": "Option&",
 "option[]": "std::vector<Option>",
+"band": "Band&",
+"band[]": "std::vector<Band>",
 }
 
 defaultValues = {
@@ -30,6 +32,7 @@ defaultValues = {
 "match[]": "std::vector<Match>()",
 "action[]": "std::vector<Action>()",
 "option[]": "std::vector<Option>()",
+"band[]": "std::vector<Band>()",
 }
 
 exportType = {
@@ -44,6 +47,7 @@ exportType = {
 "match[]": "MatchList::to_BSON({0})",
 "action[]": "ActionList::to_BSON({0})",
 "option[]": "OptionList::to_BSON({0})",
+"band[]": "BandList::to_BSON({0})",
 }
 
 importType = {
@@ -57,6 +61,7 @@ importType = {
 "match[]": "MatchList::to_vector({0}.Array())",
 "action[]": "ActionList::to_vector({0}.Array())",
 "option[]": "OptionList::to_vector({0}.Array())",
+"band[]": "BandList::to_vector({0}.Array())",
 }
 
 # Python
@@ -64,6 +69,7 @@ pyTypesMap = {
 "match" : "Match",
 "action" : "Action",
 "option" : "Option",
+"band" : "Band",
 }
 
 pyDefaultValues = {
@@ -77,6 +83,7 @@ pyDefaultValues = {
 "match[]": "list()",
 "action[]": "list()",
 "option[]": "list()",
+"band[]": "list()",
 }
 
 pyExportType = {
@@ -90,6 +97,7 @@ pyExportType = {
 "match[]": "{0}",
 "action[]": "{0}",
 "option[]": "{0}",
+"band[]": "{0}",
 }
 
 pyImportType = {
@@ -103,6 +111,7 @@ pyImportType = {
 "match[]": "list({0})",
 "action[]": "list({0})",
 "option[]": "list({0})",
+"band[]": "list({0})",
 }
 
 def convmsgtype(string):
@@ -161,6 +170,7 @@ def genH(messages, fname):
     g.addLine("#include \"types/Action.hh\"")
     g.addLine("#include \"types/Match.hh\"")
     g.addLine("#include \"types/Option.hh\"")
+    g.addLine("#include \"types/Band.hh\"")
     g.blankLine();
     enum = "enum {\n\t"
     enum += ",\n\t".join([convmsgtype(name) for name, msg in messages]) 
@@ -360,7 +370,7 @@ def genPy(messages, fname):
 
     g.addLine("import bson")    
     g.blankLine()
-    for tlv in ["Match","Action","Option"]:
+    for tlv in ["Match","Action","Option","Band"]:
         g.addLine("from rflib.types.{0} import {0}".format(tlv))
     g.addLine("from IPC import IPCMessage")
     g.blankLine()

@@ -436,21 +436,28 @@ RouteMod::RouteMod() {
     set_vm_port(0);
     set_table(0);
     set_group(0);
+    set_meter(0);
+    set_flags(0);
     set_matches(std::vector<Match>());
     set_actions(std::vector<Action>());
     set_options(std::vector<Option>());
+    set_bands(std::vector<Band>());
 }
 
-RouteMod::RouteMod(uint8_t mod, uint64_t id, uint64_t vm_port, uint64_t table, uint64_t group,
-                   std::vector<Match> matches, std::vector<Action> actions, std::vector<Option> options) {
+RouteMod::RouteMod(uint8_t mod, uint64_t id, uint64_t vm_port, uint64_t table, uint64_t group, uint64_t meter,
+                   uint64_t flags, std::vector<Match> matches, std::vector<Action> actions,
+                   std::vector<Option> options, std::vector<Band> bands) {
     set_mod(mod);
     set_id(id);
     set_vm_port(vm_port);
     set_table(table);
     set_group(group);
+    set_meter(meter);
+    set_flags(flags);
     set_matches(matches);
     set_actions(actions);
     set_options(options);
+    set_bands(bands);
 }
 
 int RouteMod::get_type() {
@@ -497,6 +504,22 @@ void RouteMod::set_group(uint64_t group) {
     this->group = group;
 }
 
+uint64_t RouteMod::get_meter() {
+    return this->meter;
+}
+
+void RouteMod::set_meter(uint64_t meter) {
+    this->meter = meter;
+}
+
+uint64_t RouteMod::get_flags() {
+    return this->flags;
+}
+
+void RouteMod::set_flags(uint64_t flags) {
+    this->flags = flags;
+}
+
 std::vector<Match> RouteMod::get_matches() {
     return this->matches;
 }
@@ -533,6 +556,18 @@ void RouteMod::add_option(const Option& option) {
     this->options.push_back(option);
 }
 
+std::vector<Band> RouteMod::get_bands() {
+    return this->bands;
+}
+
+void RouteMod::set_bands(std::vector<Band> bands) {
+    this->bands = bands;
+}
+
+void RouteMod::add_band(const Band& band) {
+    this->bands.push_back(band);
+}
+
 void RouteMod::from_BSON(const char* data) {
     mongo::BSONObj obj(data);
     set_mod(string_to<uint8_t>(obj["mod"].String()));
@@ -540,9 +575,12 @@ void RouteMod::from_BSON(const char* data) {
     set_vm_port(string_to<uint64_t>(obj["vm_port"].String()));
     set_table(string_to<uint64_t>(obj["table"].String()));
     set_group(string_to<uint64_t>(obj["group"].String()));
+    set_meter(string_to<uint64_t>(obj["meter"].String()));
+    set_flags(string_to<uint64_t>(obj["flags"].String()));
     set_matches(MatchList::to_vector(obj["matches"].Array()));
     set_actions(ActionList::to_vector(obj["actions"].Array()));
     set_options(OptionList::to_vector(obj["options"].Array()));
+    set_bands(BandList::to_vector(obj["bands"].Array()));
 }
 
 const char* RouteMod::to_BSON() {
@@ -552,9 +590,12 @@ const char* RouteMod::to_BSON() {
     _b.append("vm_port", to_string<uint64_t>(get_vm_port()));
     _b.append("table", to_string<uint64_t>(get_table()));
     _b.append("group", to_string<uint64_t>(get_group()));
+    _b.append("meter", to_string<uint64_t>(get_meter()));
+    _b.append("flags", to_string<uint64_t>(get_flags()));
     _b.appendArray("matches", MatchList::to_BSON(get_matches()));
     _b.appendArray("actions", ActionList::to_BSON(get_actions()));
     _b.appendArray("options", OptionList::to_BSON(get_options()));
+    _b.appendArray("bands", BandList::to_BSON(get_bands()));
     mongo::BSONObj o = _b.obj();
     char* data = new char[o.objsize()];
     memcpy(data, o.objdata(), o.objsize());
@@ -568,8 +609,12 @@ string RouteMod::str() {
     ss << "  id: " << to_string<uint64_t>(get_id()) << endl;
     ss << "  vm_port: " << to_string<uint64_t>(get_vm_port()) << endl;
     ss << "  table: " << to_string<uint64_t>(get_table()) << endl;
+    ss << "  group: " << to_string<uint64_t>(get_group()) << endl;
+    ss << "  meter: " << to_string<uint64_t>(get_meter()) << endl;
+    ss << "  flags: " << to_string<uint64_t>(get_flags()) << endl;
     ss << "  matches: " << MatchList::to_BSON(get_matches()) << endl;
     ss << "  actions: " << ActionList::to_BSON(get_actions()) << endl;
     ss << "  options: " << OptionList::to_BSON(get_options()) << endl;
+    ss << "  bands: " << BandList::to_BSON(get_bands()) << endl;
     return ss.str();
 }

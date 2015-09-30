@@ -3,6 +3,7 @@ import bson
 from rflib.types.Match import Match
 from rflib.types.Action import Action
 from rflib.types.Option import Option
+from rflib.types.Band import Band
 from IPC import IPCMessage
 
 format_id = lambda dp_id: hex(dp_id).rstrip('L')
@@ -393,15 +394,19 @@ class DataPlaneMap(IPCMessage):
 
 class RouteMod(IPCMessage):
     def __init__(self, mod=None, id=None, vm_port=None, table=None, group=None,
-                 matches=None, actions=None, options=None):
+                 meter=None, flags=None, matches=None, actions=None, options=None,
+                 bands=None):
         self.set_mod(mod)
         self.set_id(id)
         self.set_vm_port(vm_port)
         self.set_table(table)
         self.set_group(group)
+        self.set_meter(meter)
+        self.set_flags(flags)
         self.set_matches(matches)
         self.set_actions(actions)
         self.set_options(options)
+        self.set_bands(bands)
 
     def get_type(self):
         return ROUTE_MOD
@@ -456,6 +461,26 @@ class RouteMod(IPCMessage):
         except:
             self.group = 0
 
+    def get_meter(self):
+        return self.meter
+
+    def set_meter(self, meter):
+        meter = 0 if meter is None else meter
+        try:
+            self.meter = int(meter)
+        except:
+            self.meter = 0
+
+    def get_flags(self):
+        return self.flags
+
+    def set_flags(self, flags):
+        flags = 0 if flags is None else flags
+        try:
+            self.flags = int(flags)
+        except:
+            self.flags = 0
+
     def get_matches(self):
         return self.matches
 
@@ -495,15 +520,31 @@ class RouteMod(IPCMessage):
     def add_option(self, option):
         self.options.append(option.to_dict())
 
+    def get_bands(self):
+        return self.bands
+
+    def set_bands(self, bands):
+        bands = list() if bands is None else bands
+        try:
+            self.bands = list(bands)
+        except:
+            self.bands = list()
+
+    def add_band(self, band):
+        self.bands.append(band.to_dict())
+
     def from_dict(self, data):
         self.set_mod(data["mod"])
         self.set_id(data["id"])
         self.set_vm_port(data["vm_port"])
         self.set_table(data["table"])
         self.set_group(data["group"])
+        self.set_meter(data["meter"])
+        self.set_flags(data["flags"])
         self.set_matches(data["matches"])
         self.set_actions(data["actions"])
         self.set_options(data["options"])
+        self.set_bands(data["bands"])
 
     def to_dict(self):
         data = {}
@@ -512,9 +553,12 @@ class RouteMod(IPCMessage):
         data["vm_port"] = str(self.get_vm_port)
         data["table"] = str(self.get_table())
         data["group"] = str(self.get_group())
+        data["meter"] = str(self.get_meter())
+        data["flags"] = str(self.get_flags())
         data["matches"] = self.get_matches()
         data["actions"] = self.get_actions()
         data["options"] = self.get_options()
+        data["bands"] = self.get_bands()
         return data
 
     def __str__(self):
@@ -524,6 +568,8 @@ class RouteMod(IPCMessage):
         s += "  vm_port: " + str(self.get_vm_port()) + "\n"
         s += "  table: " + str(self.get_table()) + "\n"
         s += "  group: " + str(self.get_group()) + "\n"
+        s += "  meter: " + str(self.get_meter()) + "\n"
+        s += "  flags: " + str(self.get_flags()) + "\n"
         s += "  matches:\n"
         for match in self.get_matches():
             s += "    " + str(Match.from_dict(match)) + "\n"
@@ -533,4 +579,7 @@ class RouteMod(IPCMessage):
         s += "  options:\n"
         for option in self.get_options():
             s += "    " + str(Option.from_dict(option)) + "\n"
+        s += "  bands:\n"
+        for band in self.get_bands():
+            s += "    " + str(Band.from_dict(band)) + "\n"
         return s
