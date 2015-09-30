@@ -39,7 +39,7 @@ std::string Action::type_to_string() const {
         case RFAT_PUSH_MPLS:        return "RFAT_PUSH_MPLS";
         case RFAT_POP_MPLS:         return "RFAT_POP_MPLS";
         case RFAT_SWAP_MPLS:        return "RFAT_SWAP_MPLS";
-        case RFAT_SET_VLAN_ID:      return "RFAT_SET_VLAN_ID";
+        case RFAT_PUSH_VLAN_ID:     return "RFAT_PUSH_VLAN_ID";
         case RFAT_STRIP_VLAN_DEFERRED:  return "RFAT_STRIP_VLAN_DEFERRED";
         case RFAT_SWAP_VLAN_ID:     return "RFAT_SWAP_VLAN_ID";
         case RFAT_GROUP:            return "RFAT_GROUP";
@@ -49,6 +49,7 @@ std::string Action::type_to_string() const {
         case RFAT_SET_QUEUE:        return "RFAT_SET_QUEUE";
         case RFAT_APPLY_METER:      return "RFAT_APPLY_METER";
         case RFAT_GROUP_DEFERRED:   return "RFAT_GROUP_DEFERRED";
+        case RFAT_SET_VLAN_ID:      return "RFAT_SET_VLAN_ID";
         case RFAT_DROP:             return "RFAT_DROP";
         case RFAT_SFLOW:            return "RFAT_SFLOW";
         default:                    return "UNKNOWN_ACTION";
@@ -60,7 +61,7 @@ size_t Action::type_to_length(uint8_t type) {
         case RFAT_OUTPUT:
         case RFAT_PUSH_MPLS:
         case RFAT_SWAP_MPLS:
-        case RFAT_SET_VLAN_ID:
+        case RFAT_PUSH_VLAN_ID:
         case RFAT_SWAP_VLAN_ID:
         case RFAT_GROUP:
         case RFAT_GOTO:
@@ -68,6 +69,7 @@ size_t Action::type_to_length(uint8_t type) {
         case RFAT_SET_QUEUE:
         case RFAT_APPLY_METER:
         case RFAT_GROUP_DEFERRED:
+        case RFAT_SET_VLAN_ID:
             return sizeof(uint32_t);
         case RFAT_SET_ETH_SRC:
         case RFAT_SET_ETH_DST:

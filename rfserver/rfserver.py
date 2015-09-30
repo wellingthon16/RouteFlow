@@ -387,7 +387,7 @@ class CorsaMultitableRouteModTranslator_v1(RouteModTranslator):
                             dst_eth = action.get_value()
                         elif action_type == 'RFAT_SWAP_VLAN_ID':
                             vlan_id = action.get_value()
-                            action = Action.SET_VLAN_ID(vlan_id | OFPVID_PRESENT)
+                            action = Action.PUSH_VLAN_ID(vlan_id | OFPVID_PRESENT)
                         rm.add_action(action)
                     if dst_eth not in self.actions_to_groupid:
                         self.last_groupid += 1
