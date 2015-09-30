@@ -372,7 +372,6 @@ class CorsaMultitableRouteModTranslator_v1(RouteModTranslator):
         return rms
 
     def _send_rm_with_matches(self, rm, out_port, entries):
-        OFPVID_PRESENT = 0x1000
         rms = []
         for entry in entries:
             if out_port != entry.dp_port:
@@ -590,7 +589,6 @@ class CorsaMultitableRouteModTranslator_v3(RouteModTranslator):
         return rms
 
     def _send_rm_with_matches(self, rm, out_port, entries):
-        OFPVID_PRESENT = 0x1000
         rms = []
         for entry in entries:
             if out_port != entry.dp_port:

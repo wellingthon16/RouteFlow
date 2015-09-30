@@ -72,4 +72,6 @@ typedef enum port_config_type {
 #define METER_FLAG_BURST 0x4
 #define METER_FLAG_STATS 0x8
 
+#define OFPVID_PRESENT 0x1000
+
 #endif /* __DEFS_H__ */
