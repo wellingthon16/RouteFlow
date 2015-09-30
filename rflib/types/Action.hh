@@ -15,6 +15,11 @@ enum ActionType {
     RFAT_SWAP_VLAN_ID = 9,  /* Swap VLAN ID */
     RFAT_GROUP = 10,         /* Output group */
     RFAT_GOTO = 11,          /* Goto table */
+    RFAT_CLEAR_DEFERRED = 12, /* Apply group (defer in write instructions) */
+    RFAT_SET_VLAN_PCP = 13, /* Set VLAN PCP */
+    RFAT_SET_QUEUE = 14,    /* Set Queue */
+    RFAT_APPLY_METER = 15,  /* Apply meter */
+    RFAT_GROUP_DEFERRED = 16, /* Output group (defer in write instructions) */
     RFAT_DROP = 254,        /* Drop packet (Unimplemented) */
     RFAT_SFLOW = 255,       /* Generate SFlow messages (Unimplemented) */
 };
