@@ -48,6 +48,7 @@ std::string Match::type_to_string() const {
         case RFMT_TP_DST:       return "RFMT_TP_DST";
         case RFMT_IN_PORT:      return "RFMT_IN_PORT";
         case RFMT_VLAN_ID:      return "RFMT_VLAN_ID";
+        case RFMT_VLAN_TAGGED:  return "RFMT_VLAN_TAGGED";
         default:                return "UNKNOWN_MATCH";
     }
 }
@@ -61,6 +62,7 @@ size_t Match::type_to_length(uint8_t type) {
         case RFMT_ETHERNET:
             return IFHWADDRLEN;
         case RFMT_NW_PROTO:
+        case RFMT_VLAN_TAGGED:
             return sizeof(uint8_t);
         case RFMT_ETHERTYPE:
         case RFMT_TP_SRC:

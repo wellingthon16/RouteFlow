@@ -14,6 +14,7 @@ enum MatchType {
     RFMT_TP_DST = 8,     /* Match Transport Layer Dest Port */
     RFMT_IN_PORT = 9,    /* Match incoming port */
     RFMT_VLAN_ID = 10,   /* Match incoming VLAN ID */
+    RFMT_VLAN_TAGGED = 11, /* Match VLAN tagged/untagged */
 };
 
 class Match : public TLV {

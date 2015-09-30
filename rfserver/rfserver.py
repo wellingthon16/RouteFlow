@@ -512,7 +512,8 @@ class CorsaMultitableRouteModTranslator_v3(RouteModTranslator):
         rms.append(rm)
 
         # default drop
-        for table_id in (self.VLAN_CIRCUIT_TABLE,
+        for table_id in (self.VLAN_CHECK_TABLE,
+                         self.VLAN_CIRCUIT_TABLE,
                          self.L3_IF_MAC_DA_TABLE,
                          self.ETHER_TABLE,
                          self.FIB_TABLE,
@@ -529,9 +530,14 @@ class CorsaMultitableRouteModTranslator_v3(RouteModTranslator):
         rm.add_option(self.DROP_PRIORITY)
         rms.append(rm)
 
-        ## TODO VLAN Check Table 1 (immutable)
+        ## VLAN Check Table 1 (immutable)
         # Tagged packets to VLAN_MAC_XLATE
-        # Drop untagged packets
+        rm = RouteMod(RMT_ADD, self.dp_id)
+        rm.set_table(self.VLAN_CHECK_TABLE)
+        rm.add_match(Match.VLAN_TAGGED(True))
+        rm.add_action(Action.GOTO(self.VLAN_MAC_XLATE_TABLE))
+        rm.add_option(self.CONTROLLER_PRIORITY)
+        rms.append(rm)
 
         ## VLAN MAC XLATE Table 2
         rm = RouteMod(RMT_ADD, self.dp_id)
