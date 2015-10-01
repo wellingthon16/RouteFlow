@@ -21,6 +21,7 @@ from rflib.defs import *
 from rflib.types.Match import *
 from rflib.types.Action import *
 from rflib.types.Option import *
+from rflib.types.Band import *
 
 from rftable import *
 
@@ -281,7 +282,7 @@ class NoviFlowMultitableRouteModTranslator(RouteModTranslator):
         rms.extend(self._send_rm_with_matches(rm, r.dp_port, entries))
         return rms
 
-class CorsaMultitableRouteModTranslator(RouteModTranslator):
+class CorsaMultitableRouteModTranslator_v1(RouteModTranslator):
 
     DROP_PRIORITY = Option.PRIORITY(0)
     CONTROLLER_PRIORITY = Option.PRIORITY(255)
@@ -296,7 +297,7 @@ class CorsaMultitableRouteModTranslator(RouteModTranslator):
     LOCAL_TABLE = 9
 
     def __init__(self, dp_id, ct_id, rftable, isltable, log):
-        super(CorsaMultitableRouteModTranslator, self).__init__(
+        super(CorsaMultitableRouteModTranslator_v1, self).__init__(
             dp_id, ct_id, rftable, isltable, log)
         self.last_groupid = CONTROLLER_GROUP
         self.actions_to_groupid = {}
@@ -371,7 +372,6 @@ class CorsaMultitableRouteModTranslator(RouteModTranslator):
         return rms
 
     def _send_rm_with_matches(self, rm, out_port, entries):
-        OFPVID_PRESENT = 0x1000
         rms = []
         for entry in entries:
             if out_port != entry.dp_port:
@@ -387,7 +387,7 @@ class CorsaMultitableRouteModTranslator(RouteModTranslator):
                             dst_eth = action.get_value()
                         elif action_type == 'RFAT_SWAP_VLAN_ID':
                             vlan_id = action.get_value()
-                            action = Action.SET_VLAN_ID(vlan_id | OFPVID_PRESENT)
+                            action = Action.PUSH_VLAN_ID(vlan_id | OFPVID_PRESENT)
                         rm.add_action(action)
                     if dst_eth not in self.actions_to_groupid:
                         self.last_groupid += 1
@@ -466,10 +466,238 @@ class CorsaMultitableRouteModTranslator(RouteModTranslator):
         rms.extend(self._send_rm_with_matches(rm, entry.dp_port, entries))
         return rms
 
+class CorsaMultitableRouteModTranslator_v3(RouteModTranslator):
+
+    DROP_PRIORITY = Option.PRIORITY(0)
+    CONTROLLER_PRIORITY = Option.PRIORITY(255)
+    DEFAULT_PRIORITY = Option.PRIORITY(PRIORITY_LOWEST + PRIORITY_BAND + 1)
+
+    PORT_BASED_PROTO_TABLE = 0
+    VLAN_CHECK_TABLE = 1
+    VLAN_MAC_XLATE_TABLE = 2
+    VLAN_CIRCUIT_TABLE = 3
+    PRIORITY_MAP_TABLE = 4
+    L3_IF_MAC_DA_TABLE = 5
+    ETHER_TABLE = 6
+    FIB_TABLE = 7
+    LOCAL_TABLE = 9
+
+    def __init__(self, dp_id, ct_id, rftable, isltable, log):
+        super(CorsaMultitableRouteModTranslator_v3, self).__init__(
+            dp_id, ct_id, rftable, isltable, log)
+        self.last_groupid = CONTROLLER_GROUP
+        self.actions_to_groupid = {}
+
+    def configure_datapath(self):
+        rms = []
+
+        # delete all meters
+        rm = RouteMod(RMT_DELETE_METER, self.dp_id)
+        rms.append(rm)
+
+        # delete all groups
+        rm = RouteMod(RMT_DELETE_GROUP, self.dp_id)
+        rms.append(rm)
+
+        # delete all flows
+        rm = RouteMod(RMT_DELETE, self.dp_id)
+        rms.append(rm)
+
+        # default meter
+        rm = RouteMod(RMT_ADD_METER, self.dp_id)
+        rm.set_meter(1)
+        rm.set_flags(METER_FLAG_KBPS|METER_FLAG_STATS)
+        MAX_RATE = 0xFFFFFFFF
+        rm.add_band(Band.DROP(MAX_RATE))
+        rms.append(rm)
+
+        # default drop
+        for table_id in (self.VLAN_CHECK_TABLE,
+                         self.VLAN_CIRCUIT_TABLE,
+                         self.L3_IF_MAC_DA_TABLE,
+                         self.ETHER_TABLE,
+                         self.FIB_TABLE,
+                         self.LOCAL_TABLE):
+            rm = RouteMod(RMT_ADD, self.dp_id)
+            rm.set_table(table_id)
+            rm.add_option(self.DROP_PRIORITY)
+            rms.append(rm)
+
+        ## Port Based Protocol Table 0
+        rm = RouteMod(RMT_ADD, self.dp_id)
+        rm.set_table(self.PORT_BASED_PROTO_TABLE)
+        rm.add_action(Action.GOTO(self.VLAN_CHECK_TABLE))
+        rm.add_option(self.DROP_PRIORITY)
+        rms.append(rm)
+
+        ## VLAN Check Table 1 (immutable)
+        # Tagged packets to VLAN_MAC_XLATE
+        rm = RouteMod(RMT_ADD, self.dp_id)
+        rm.set_table(self.VLAN_CHECK_TABLE)
+        rm.add_match(Match.VLAN_TAGGED(True))
+        rm.add_action(Action.GOTO(self.VLAN_MAC_XLATE_TABLE))
+        rm.add_option(self.CONTROLLER_PRIORITY)
+        rms.append(rm)
+
+        ## VLAN MAC XLATE Table 2
+        rm = RouteMod(RMT_ADD, self.dp_id)
+        rm.set_table(self.VLAN_MAC_XLATE_TABLE)
+        rm.add_action(Action.GOTO(self.VLAN_CIRCUIT_TABLE))
+        rm.add_option(self.DROP_PRIORITY)
+        rms.append(rm)
+
+        ## VLAN CIRCUIT Table 3
+        # only default drop rule
+
+        ## PRIORITY MAP Table 4
+        # Clear actions
+        rm = RouteMod(RMT_ADD, self.dp_id)
+        rm.set_table(self.PRIORITY_MAP_TABLE)
+        rm.add_action(Action.CLEAR_DEFERRED())
+        rm.add_option(self.DROP_PRIORITY)
+        rms.append(rm)
+
+        ## L3 Interface MAC DA Table 5
+        # Allow MAC broadcast frames on all ports
+        rm = RouteMod(RMT_ADD, self.dp_id)
+        rm.set_table(self.L3_IF_MAC_DA_TABLE)
+        rm.add_match(Match.ETHERNET("ff:ff:ff:ff:ff:ff"))
+        rm.add_action(Action.GOTO(self.ETHER_TABLE))
+        rm.add_option(self.CONTROLLER_PRIORITY)
+        rms.append(rm)
+
+        ## Ethertype Table 6
+        rm = RouteMod(RMT_ADD, self.dp_id)
+        rm.set_table(self.ETHER_TABLE)
+        rm.add_match(Match.ETHERTYPE(ETHERTYPE_ARP))
+        rm.add_action(Action.CONTROLLER())
+        rm.add_option(self.CONTROLLER_PRIORITY)
+        rms.append(rm)
+        # IPv4
+        rm = RouteMod(RMT_ADD, self.dp_id)
+        rm.set_table(self.ETHER_TABLE)
+        rm.add_match(Match.ETHERTYPE(ETHERTYPE_IP))
+        rm.add_action(Action.GOTO(self.FIB_TABLE))
+        rm.add_option(self.CONTROLLER_PRIORITY)
+        rms.append(rm)
+
+        ## FIB Table 7
+        # only default drop rule
+
+        ## Local (destined to router) Table 9
+        # For now, allow all protocols to be sent to controller/router
+        rm = RouteMod(RMT_ADD, self.dp_id)
+        rm.set_table(self.LOCAL_TABLE)
+        rm.add_action(Action.CONTROLLER())
+        rm.add_option(self.CONTROLLER_PRIORITY)
+        rms.append(rm)
+
+        return rms
+
+    def _send_rm_with_matches(self, rm, out_port, entries):
+        rms = []
+        for entry in entries:
+            if out_port != entry.dp_port:
+                if (entry.get_status() == RFENTRY_ACTIVE or
+                    entry.get_status() == RFISL_ACTIVE):
+                    dst_eth = None
+                    actions = rm.actions
+                    rm.set_actions(None)
+                    for action_dict in actions:
+                        action = Action.from_dict(action_dict)
+                        action_type = action.type_to_str(action._type)
+                        if action_type == 'RFAT_SET_ETH_DST':
+                            dst_eth = action.get_value()
+                        elif action_type == 'RFAT_SWAP_VLAN_ID':
+                            vlan_id = action.get_value()
+                            action = Action.SET_VLAN_ID(vlan_id | OFPVID_PRESENT)
+                        rm.add_action(action)
+                    if dst_eth not in self.actions_to_groupid:
+                        self.last_groupid += 1
+                        new_groupid = self.last_groupid
+                        self.actions_to_groupid[dst_eth] = new_groupid
+                        group_rm = RouteMod(RMT_ADD_GROUP, self.dp_id)
+                        group_rm.set_group(new_groupid)
+                        group_rm.set_actions(rm.actions)
+                        rms.append(group_rm)
+                        self.log.info("adding new group %u for Ethernet destination %s" % (
+                            new_groupid, dst_eth))
+                    rm.set_actions(None)
+                    rm.add_action(Action.GROUP_DEFERRED(self.actions_to_groupid[dst_eth]))
+                    rms.append(rm)
+                    break
+        return rms
+
+    def handle_controller_route_mod(self, entry, rm):
+        rms = []
+        rm.add_action(Action.GOTO(self.LOCAL_TABLE))
+        rm.set_table(self.FIB_TABLE)
+        dl_dst = None
+        dst_vlan = None
+        orig_matches = rm.get_matches()
+        rm.set_matches(None)
+        for match_dict in orig_matches:
+            match = Match.from_dict(match_dict)
+            match_type = match.type_to_str(match._type)
+            if match_type == "RFMT_ETHERNET":
+                dl_dst = match
+            # TODO: support more than IP address matches
+            # TODO: support more than IPv4
+            elif match_type == "RFMT_IPV4":
+                rm.add_match(Match.ETHERTYPE(ETHERTYPE_IP))
+                rm.add_match(match)
+            elif match_type == "RFMT_VLAN_ID":
+                dst_vlan = match.get_value()
+
+        if rm.matches:
+            rms.append(rm)
+
+        if dst_vlan is not None:
+            vlan_rm = RouteMod(RMT_ADD, self.dp_id)
+            vlan_rm.set_table(self.VLAN_CIRCUIT_TABLE)
+            vlan_rm.add_match(Match.IN_PORT(entry.dp_port))
+            vlan_rm.add_match(Match.VLAN_ID(dst_vlan))
+            vlan_rm.add_action(Action.SET_VLAN_PCP(7))
+            vlan_rm.add_action(Action.SET_QUEUE(0))
+            vlan_rm.add_action(Action.APPLY_METER(1))
+            vlan_rm.add_action(Action.GOTO(self.L3_IF_MAC_DA_TABLE))
+            vlan_rm.add_option(self.CONTROLLER_PRIORITY)
+            rms.append(vlan_rm)
+
+        if dl_dst is not None:
+            hw_rm = RouteMod(RMT_CONTROLLER, entry.dp_id)
+            hw_rm.set_table(self.L3_IF_MAC_DA_TABLE)
+            hw_rm.set_id(rm.get_id())
+            hw_rm.set_vm_port(rm.get_vm_port())
+            hw_rm.add_match(Match.IN_PORT(entry.dp_port))
+            hw_rm.add_match(dl_dst)
+            hw_rm.add_action(Action.GOTO(self.ETHER_TABLE))
+            hw_rm.add_option(self.DEFAULT_PRIORITY)
+            rms.append(hw_rm)
+
+        return rms
+
+    def handle_route_mod(self, entry, rm):
+        rms = []
+        entries = self.rftable.get_entries(dp_id=entry.dp_id,
+                                           ct_id=entry.ct_id)
+        entries.extend(self.isltable.get_entries(dp_id=entry.dp_id,
+                                                 ct_id=entry.ct_id))
+
+        # Replace the VM port with the datapath port
+        rm.add_action(Action.OUTPUT(entry.dp_port))
+
+        rm.set_table(self.FIB_TABLE)
+
+        rms.extend(self._send_rm_with_matches(rm, entry.dp_port, entries))
+        return rms
+
 class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
     VENDOR_CLASSES = {
         "noviflow" : NoviFlowMultitableRouteModTranslator,
-        "corsa"    : CorsaMultitableRouteModTranslator,
+        "corsa"    : CorsaMultitableRouteModTranslator_v1,
+        "corsa-v1" : CorsaMultitableRouteModTranslator_v1,
+        "corsa-v3" : CorsaMultitableRouteModTranslator_v3,
     }
 
     def __init__(self, configfile, islconffile, multitabledps, satellitedps):

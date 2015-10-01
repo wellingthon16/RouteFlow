@@ -38,6 +38,8 @@ typedef enum route_mod_type {
 	RMT_CONTROLLER,			/* Add flow to datapath, output to controller */
         RMT_ADD_GROUP,                  /* Add group to datapath */
         RMT_DELETE_GROUP,               /* Remove group from datapath */
+        RMT_ADD_METER,                  /* Add meter to datapath */
+        RMT_DELETE_METER,               /* Delete meter from datapath */
 	/* Future implementation */
 	//RMT_MODIFY		/* Modify existing flow (Unimplemented) */
 } RouteModType;
@@ -64,5 +66,12 @@ typedef enum port_config_type {
 #define IPPROTO_OSPF 0x59
 
 #define CONTROLLER_GROUP 1
+
+#define METER_FLAG_KBPS 0x1
+#define METER_FLAG_PKTPS 0x2
+#define METER_FLAG_BURST 0x4
+#define METER_FLAG_STATS 0x8
+
+#define OFPVID_PRESENT 0x1000
 
 #endif /* __DEFS_H__ */

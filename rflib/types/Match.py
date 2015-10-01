@@ -11,6 +11,7 @@ RFMT_TP_SRC = 7      # Match Transport Layer Src Port
 RFMT_TP_DST = 8      # Match Transport Layer Dest Port
 RFMT_IN_PORT = 9     # Match incoming port
 RFMT_VLAN_ID = 10    # Match incoming VLAN ID
+RFMT_VLAN_TAGGED = 11 # Match VLAN tagged/untagged
 
 typeStrings = {
             RFMT_IPV4 : "RFMT_IPV4",
@@ -23,6 +24,7 @@ typeStrings = {
             RFMT_TP_DST : "RFMT_TP_DST",
             RFMT_IN_PORT : "RFMT_IN_PORT",
             RFMT_VLAN_ID : "RFMT_VLAN_ID",
+            RFMT_VLAN_TAGGED : "RFMT_VLAN_TAGGED",
         }
 
 class Match(TLV):
@@ -55,6 +57,10 @@ class Match(TLV):
     @classmethod
     def VLAN_ID(cls, tag):
         return cls(RFMT_VLAN_ID, tag)
+
+    @classmethod
+    def VLAN_TAGGED(cls, tagged):
+        return cls(RFMT_VLAN_TAGGED, tagged)
 
     @classmethod
     def ETHERTYPE(cls, ethertype):
@@ -93,6 +99,8 @@ class Match(TLV):
             return int_to_bin(value, 16)
         elif matchType == RFMT_NW_PROTO:
             return int_to_bin(value, 8)
+        elif matchType == RFMT_VLAN_TAGGED:
+            return int_to_bin(1 if value else 0, 8)
         else:
             return None
 
@@ -113,6 +121,8 @@ class Match(TLV):
         elif self._type in (RFMT_MPLS, RFMT_IN_PORT, RFMT_VLAN_ID, RFMT_ETHERTYPE,
                             RFMT_NW_PROTO, RFMT_TP_SRC, RFMT_TP_DST):
             return bin_to_int(self._value)
+        elif self._type == RFMT_VLAN_TAGGED:
+            return False if bin_to_int(self._value) == 0 else True
         else:
             return None
 

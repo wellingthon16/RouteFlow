@@ -9,6 +9,7 @@ STARTBVMS=1
 DPPORTNET=172.31
 DPPORTNETV6=fc00::
 DPPORTS=2
+VIDS=()
 SWITCH1DPID=0x99
 # Multi-table datapaths are listed by 'DPID/vendor' to allow the proper
 # flow mods to be sent for each vendor's pipeline.
@@ -212,14 +213,23 @@ iface eth0 inet static
 EOF
 
 for i in `seq 1 $DPPORTS` ; do
+        vid=${VIDS[((i-1))]}
+        iface=eth$i
+        vlan_conf=
+        if [[ -n "${vid}" ]]; then
+            iface+=".${vid}"
+            vlan_conf="vlan-raw-device eth$i"
+        fi
         cat >> $RFVM1/rootfs/etc/network/interfaces<<EOF
 
-auto eth$i
-iface eth$i inet static
+auto $iface
+iface $iface inet static
    address $DPPORTNET.$i.1
    netmask 255.255.255.0
-iface eth$i inet6 static
+   ${vlan_conf}
+iface $iface inet6 static
    address $DPPORTNETV6$i:1/112
+   ${vlan_conf}
 EOF
 done
 }

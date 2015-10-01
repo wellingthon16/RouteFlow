@@ -9,11 +9,17 @@ RFAT_SET_ETH_DST = 3    # Ethernet destination address
 RFAT_PUSH_MPLS = 4      # Push MPLS label
 RFAT_POP_MPLS = 5       # Pop MPLS label
 RFAT_SWAP_MPLS = 6      # Swap MPLS label
-RFAT_SET_VLAN_ID = 7    # Set VLAN ID
+RFAT_PUSH_VLAN_ID = 7   # Push VLAN ID
 RFAT_STRIP_VLAN_DEFERRED = 8 # Strip outermost VLAN (defer in write instructions)
 RFAT_SWAP_VLAN_ID = 9   # Pop and swap a VLAN header
 RFAT_GROUP = 10         # Output group
 RFAT_GOTO = 11          # Goto table
+RFAT_CLEAR_DEFERRED = 12 # Apply group (defer in write instructions)
+RFAT_SET_VLAN_PCP = 13  # Set VLAN PCP
+RFAT_SET_QUEUE = 14     # Set queue
+RFAT_APPLY_METER = 15   # Apply meter
+RFAT_GROUP_DEFERRED = 16 # Output group (defer in write instructions)
+RFAT_SET_VLAN_ID = 17   # Set VLAN ID
 RFAT_DROP = 254         # Drop packet (Unimplemented)
 RFAT_SFLOW = 255        # Generate SFlow messages (Unimplemented)
 
@@ -24,21 +30,32 @@ typeStrings = {
             RFAT_PUSH_MPLS : "RFAT_PUSH_MPLS",
             RFAT_POP_MPLS : "RFAT_POP_MPLS",
             RFAT_SWAP_MPLS : "RFAT_SWAP_MPLS",
-            RFAT_SET_VLAN_ID : "RFAT_SET_VLAN_ID",
+            RFAT_PUSH_VLAN_ID : "RFAT_PUSH_VLAN_ID",
             RFAT_STRIP_VLAN_DEFERRED : "RFAT_STRIP_VLAN_DEFERRED",
             RFAT_SWAP_VLAN_ID : "RFAT_SWAP_VLAN_ID",
             RFAT_GROUP : "RFAT_GROUP",
             RFAT_GOTO : "RFAT_GOTO",
+            RFAT_CLEAR_DEFERRED : "RFAT_CLEAR_DEFERRED",
+            RFAT_SET_VLAN_PCP : "RFAT_SET_VLAN_PCP",
+            RFAT_SET_QUEUE : "RFAT_SET_QUEUE",
+            RFAT_APPLY_METER : "RFAT_APPLY_METER",
+            RFAT_GROUP_DEFERRED : "RFAT_GROUP_DEFERRED",
+            RFAT_SET_VLAN_ID : "RFAT_SET_VLAN_ID",
         }
 
 ACTION_BIN = (
   RFAT_OUTPUT,
   RFAT_PUSH_MPLS,
   RFAT_SWAP_MPLS,
-  RFAT_SET_VLAN_ID,
+  RFAT_PUSH_VLAN_ID,
   RFAT_SWAP_VLAN_ID,
   RFAT_GROUP,
   RFAT_GOTO,
+  RFAT_SET_VLAN_PCP,
+  RFAT_SET_QUEUE,
+  RFAT_APPLY_METER,
+  RFAT_GROUP_DEFERRED,
+  RFAT_SET_VLAN_ID,
 )
 
 class Action(TLV):
@@ -74,8 +91,8 @@ class Action(TLV):
         return cls(RFAT_SWAP_MPLS, label)
 
     @classmethod
-    def SET_VLAN_ID(cls, vlan_id):
-        return cls(RFAT_SET_VLAN_ID, vlan_id)
+    def PUSH_VLAN_ID(cls, vlan_id):
+        return cls(RFAT_PUSH_VLAN_ID, vlan_id)
 
     @classmethod
     def SWAP_VLAN_ID(cls, vlan_id):
@@ -106,6 +123,30 @@ class Action(TLV):
         return cls(RFAT_STRIP_VLAN_DEFERRED)
 
     @classmethod
+    def CLEAR_DEFERRED(cls):
+        return cls(RFAT_CLEAR_DEFERRED, None)
+
+    @classmethod
+    def SET_VLAN_PCP(cls, vlan_pcp):
+        return cls(RFAT_SET_VLAN_PCP, vlan_pcp)
+
+    @classmethod
+    def SET_QUEUE(cls, queue):
+        return cls(RFAT_SET_QUEUE, queue)
+
+    @classmethod
+    def APPLY_METER(cls, meter_id):
+        return cls(RFAT_APPLY_METER, meter_id)
+
+    @classmethod
+    def GROUP_DEFERRED(cls, group):
+        return cls(RFAT_GROUP_DEFERRED, group)
+
+    @classmethod
+    def SET_VLAN_ID(cls, vlan_id):
+        return cls(RFAT_SET_VLAN_ID, vlan_id)
+
+    @classmethod
     def from_dict(cls, dic):
         ac = cls()
         ac._type = dic['type']
@@ -118,7 +159,8 @@ class Action(TLV):
             return int_to_bin(value, 32)
         elif actionType in (RFAT_SET_ETH_SRC, RFAT_SET_ETH_DST):
             return ether_to_bin(value)
-        elif actionType in (RFAT_POP_MPLS, RFAT_DROP, RFAT_SFLOW, RFAT_STRIP_VLAN_DEFERRED):
+        elif actionType in (RFAT_POP_MPLS, RFAT_DROP, RFAT_SFLOW,
+                            RFAT_STRIP_VLAN_DEFERRED, RFAT_CLEAR_DEFERRED):
             return ''
         else:
             return None
@@ -135,7 +177,8 @@ class Action(TLV):
             return bin_to_int(self._value)
         elif self._type in (RFAT_SET_ETH_SRC, RFAT_SET_ETH_DST):
             return bin_to_ether(self._value)
-        elif self._type in (RFAT_POP_MPLS, RFAT_DROP, RFAT_SFLOW, RFAT_STRIP_VLAN_DEFERRED):
+        elif self._type in (RFAT_POP_MPLS, RFAT_DROP, RFAT_SFLOW,
+                            RFAT_STRIP_VLAN_DEFERRED, RFAT_CLEAR_DEFERRED):
             return None
         else:
             return None
