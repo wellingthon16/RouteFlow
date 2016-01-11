@@ -382,7 +382,6 @@ class NoviFlowMultitableRouteModTranslator(RouteModTranslator):
         rm.set_table(self.ETHER_TABLE)
         rm.add_match(Match.ETHERTYPE(ETHERTYPE_ARP))
         rm.add_option(self.CONTROLLER_PRIORITY)
-        rms.append(rm)
         rms.extend(self.handle_controller_route_mod(self, rm))
         # IPv4
         rm = RouteMod(RMT_ADD, self.dp_id)
@@ -474,6 +473,7 @@ class NoviFlowMultitableRouteModTranslator(RouteModTranslator):
 
         return rms
 
+
 class CorsaMultitableRouteModTranslator_v1(RouteModTranslator):
 
     DROP_PRIORITY = Option.PRIORITY(0)
@@ -490,7 +490,7 @@ class CorsaMultitableRouteModTranslator_v1(RouteModTranslator):
 
     def __init__(self, dp_id, ct_id, rftable, isltable, conf, islconf, fpconf, log, labeller):
         super(CorsaMultitableRouteModTranslator_v1, self).__init__(
-            self, dp_id, ct_id, rftable, isltable, conf, islconf, fpconf, log, labeller)
+            dp_id, ct_id, rftable, isltable, conf, islconf, fpconf, log, labeller)
         self.last_groupid = CONTROLLER_GROUP
         self.actions_to_groupid = {}
 
