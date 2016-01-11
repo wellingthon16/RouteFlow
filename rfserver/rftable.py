@@ -17,6 +17,7 @@ RFENTRY = 0
 RFCONFIGENTRY = 1
 RFISLCONFENTRY = 2
 RFISLENTRY = 3
+RFFPCONFENTRY = 4
 
 class EntryFactory:
     @staticmethod
@@ -29,6 +30,8 @@ class EntryFactory:
             return RFISLEntry()
         elif type_ == RFISLCONFENTRY:
             return RFISLConfEntry()
+        elif type_ == RFFPCONFENTRY:
+            return RFFPConfEntry()
 
 class EntryTable(TableBase):
     def __init__(self, name, entry_type):
@@ -89,18 +92,25 @@ class RFTable(EntryTable):
     def is_dp_registered(self, ct_id, dp_id):
         return bool(self.get_dp_entries(ct_id, dp_id))
 
-
 class RFConfig(EntryTable):
     def __init__(self, ifile):
         EntryTable.__init__(self, RFCONFIG_NAME, RFCONFIGENTRY)
         # TODO: perform validation of config
         configfile = file(ifile)
         lines = configfile.readlines()[1:]
-        entries = [line.strip("\n").split(",") for line in lines]
-        for (a, b, c, d, e) in entries:
-            self.set_entry(RFConfigEntry(vm_id=int(a, 16), vm_port=int(b),
-                                         ct_id=int(c), dp_id=int(d, 16),
-                                         dp_port=int(e)))
+        entries = [line.strip("\n").partition("#")[0].split(",") for line in lines]
+        for conf in entries:
+            if not conf or (len(conf) == 1 and not conf[0].strip()):
+                continue
+            try:
+                (a, b, c, d, e) = conf
+                self.set_entry(RFConfigEntry(vm_id=int(a, 16), vm_port=int(b),
+                                             ct_id=int(c), dp_id=int(d, 16),
+                                             dp_port=int(e)))
+
+            except:
+                raise SyntaxError("Invalid configuration line " + str(conf) + " expected format " +
+                                  "vm_id,vm_port,ct_id,dp_id,dp_port")
 
     def get_config_for_vm_port(self, vm_id, vm_port):
         result = self.get_entries(vm_id=vm_id,
@@ -116,6 +126,13 @@ class RFConfig(EntryTable):
         if not result:
             return None
         return result[0]
+
+    def get_config_for_dp(self, ct_id, dp_id):
+        result = self.get_entries(ct_id=ct_id,
+                                  dp_id=dp_id)
+        if not result:
+            return None
+        return result
 
 class RFISLTable(EntryTable):
     def __init__(self):
@@ -151,30 +168,82 @@ class RFISLConf(EntryTable):
             # Default to no ISL config
             return
         lines = internalfile.readlines()[1:]
-        entries = [line.strip("\n").split(",") for line in lines]
-        for (a, b, c, d, e, f, g, h, i) in entries:
-            self.set_entry(RFISLConfEntry(vm_id=int(a, 16), ct_id=int(b),
-                                          dp_id=int(c, 16), dp_port=int(d),
-                                          eth_addr=e, rem_ct=int(f),
-                                          rem_id=int(g, 16), rem_port=int(h),
-                                          rem_eth_addr=i))
+        entries = [line.strip("\n").partition("#")[0].split(",") for line in lines]
+        for conf in entries:
+            if not conf or (len(conf) == 1 and not conf[0].strip()):
+                continue
+            try:
+                (a, b, c, d, e, f, g, h, i) = conf
+                self.set_entry(RFISLConfEntry(vm_id=int(a, 16), ct_id=int(b),
+                                              dp_id=int(c, 16), dp_port=int(d),
+                                              eth_addr=e, rem_ct=int(f),
+                                              rem_id=int(g, 16), rem_port=int(h),
+                                              rem_eth_addr=i))
+            except:
+                raise SyntaxError("Invalid isl configuration line " + str(conf) + " expected format " +
+                                  "vm_id,ct_id,dp_id,dp_port,eth_addr,rem_ct,rem_id,rem_port,rem_eth_addr")
 
     def get_entries_by_port(self, ct, id_, port):
         results = self.get_entries(ct_id=ct, dp_id=id_, dp_port=port)
         results.extend(self.get_entries(rem_ct=ct, rem_id=id_, rem_port=port))
         return results
 
+    def get_entries_by_dpid(self, ct, id_):
+        results = self.get_entries(ct_id=ct, dp_id=id_)
+        results.extend(self.get_entries(rem_ct=ct, rem_id=id_))
+        return results
 
-# Convenience functions for packing/unpacking to a dict for BSON representation
-def load_from_dict(src, obj, attr):
-    setattr(obj, attr, src[attr])
+class RFFPConf(EntryTable):
+    def __init__(self, ifile):
+        EntryTable.__init__(self, RFFPCONF_NAME, RFFPCONFENTRY)
+        # TODO: perform validation of config
+        try:
+            internalfile = file(ifile)
+        except:
+            # Default to no FP config
+            return
+        lines = internalfile.readlines()[1:]
+        entries = [line.strip("\n").partition("#")[0].split(",") for line in lines]
+        for conf in entries:
+            if not conf or (len(conf) == 1 and not conf[0].strip()):
+                continue
+            try:
+                (a, b, c, d) = conf
+                self.set_entry(RFFPConfEntry(ct_id=int(a),
+                                              dp_id=int(b, 16), dp_port=int(c),
+                                              dp0_port=int(d)))
+            except:
+                raise SyntaxError("Invalid fastpath configuration line " + str(conf) + " expected format " +
+                                  "ct_id,dp_id,dp_port,dp0_port")
+
+    def get_entries_all(self):
+        results = self.get_entries()
+        return results
+
+    def get_entries_for_dpid(self, ct, dp_id):
+        results = self.get_entries(ct_id=ct, dp_id=dp_id)
+        return results
+
+    def get_entries_for_port(self, ct, dp_id, dp_port):
+        results = self.get_entries(ct_id=ct, dp_id=dp_id, dp_port=dp_port)
+        return results
+
+class BaseEntry:
+    def from_dict(self, data):
+        vars(self).clear()
+        vars(self).update(data)
+        self.id = self._id
+        del self._id
+
+    def to_dict(self):
+        data = vars(self).copy()
+        if data['id'] is not None:
+            data['_id'] = data['id']
+        del data['id']
+        return data
 
 
-def pack_into_dict(dest, obj, attr):
-    dest[attr] = getattr(obj, attr)
-
-
-class RFEntry:
+class RFEntry(BaseEntry):
     def __init__(self, vm_id=None, vm_port=None, ct_id=None, dp_id=None,
                  dp_port=None, vs_id=None, vs_port=None, eth_addr=None):
         self.id = None
@@ -260,33 +329,8 @@ class RFEntry:
                               self.ct_id,
                               self.get_status())
 
-    def from_dict(self, data):
-        self.id = data["_id"]
-        load_from_dict(data, self, "vm_id")
-        load_from_dict(data, self, "vm_port")
-        load_from_dict(data, self, "ct_id")
-        load_from_dict(data, self, "dp_id")
-        load_from_dict(data, self, "dp_port")
-        load_from_dict(data, self, "vs_id")
-        load_from_dict(data, self, "vs_port")
-        load_from_dict(data, self, "eth_addr")
 
-    def to_dict(self):
-        data = {}
-        if self.id is not None:
-            data["_id"] = self.id
-        pack_into_dict(data, self, "vm_id")
-        pack_into_dict(data, self, "vm_port")
-        pack_into_dict(data, self, "ct_id")
-        pack_into_dict(data, self, "dp_id")
-        pack_into_dict(data, self, "dp_port")
-        pack_into_dict(data, self, "vs_id")
-        pack_into_dict(data, self, "vs_port")
-        pack_into_dict(data, self, "eth_addr")
-        return data
-
-
-class RFISLEntry:
+class RFISLEntry(BaseEntry):
     def __init__(self, vm_id=None, ct_id=None, dp_id=None,  dp_port=None,
                  eth_addr=None, rem_ct=None, rem_id=None, rem_port=None,
                  rem_eth_addr=None):
@@ -358,35 +402,8 @@ class RFISLEntry:
         else:
             return RFISL_ACTIVE
 
-    def from_dict(self, data):
-        self.id = data["_id"]
-        load_from_dict(data, self, "vm_id")
-        load_from_dict(data, self, "ct_id")
-        load_from_dict(data, self, "dp_id")
-        load_from_dict(data, self, "dp_port")
-        load_from_dict(data, self, "eth_addr")
-        load_from_dict(data, self, "rem_ct")
-        load_from_dict(data, self, "rem_id")
-        load_from_dict(data, self, "rem_port")
-        load_from_dict(data, self, "rem_eth_addr")
 
-    def to_dict(self):
-        data = {}
-        if self.id is not None:
-            data["_id"] = self.id
-        pack_into_dict(data, self, "vm_id")
-        pack_into_dict(data, self, "ct_id")
-        pack_into_dict(data, self, "dp_id")
-        pack_into_dict(data, self, "dp_port")
-        pack_into_dict(data, self, "eth_addr")
-        pack_into_dict(data, self, "rem_ct")
-        pack_into_dict(data, self, "rem_id")
-        pack_into_dict(data, self, "rem_port")
-        pack_into_dict(data, self, "rem_eth_addr")
-        return data
-
-
-class RFISLConfEntry:
+class RFISLConfEntry(BaseEntry):
     def __init__(self, vm_id=None, ct_id=None, dp_id=None,  dp_port=None,
                  eth_addr=None, rem_ct=None, rem_id=None, rem_port=None,
                  rem_eth_addr=None):
@@ -413,35 +430,25 @@ class RFISLConfEntry:
     def get_status(self):
         return RFENTRY_ACTIVE
 
-    def from_dict(self, data):
-        self.id = data["_id"]
-        load_from_dict(data, self, "vm_id")
-        load_from_dict(data, self, "ct_id")
-        load_from_dict(data, self, "dp_id")
-        load_from_dict(data, self, "dp_port")
-        load_from_dict(data, self, "eth_addr")
-        load_from_dict(data, self, "rem_ct")
-        load_from_dict(data, self, "rem_id")
-        load_from_dict(data, self, "rem_port")
-        load_from_dict(data, self, "rem_eth_addr")
+class RFFPConfEntry(BaseEntry):
+    def __init__(self, ct_id=None, dp_id=None,  dp_port=None,
+                 dp0_port=None):
+        self.id = None
+        self.ct_id = ct_id
+        self.dp_id = dp_id
+        self.dp_port = dp_port
+        self.dp0_port = dp0_port
+        self.fast_paths = []
 
-    def to_dict(self):
-        data = {}
-        if self.id is not None:
-            data["_id"] = self.id
-        pack_into_dict(data, self, "vm_id")
-        pack_into_dict(data, self, "ct_id")
-        pack_into_dict(data, self, "dp_id")
-        pack_into_dict(data, self, "dp_port")
-        pack_into_dict(data, self, "eth_addr")
-        pack_into_dict(data, self, "rem_ct")
-        pack_into_dict(data, self, "rem_id")
-        pack_into_dict(data, self, "rem_port")
-        pack_into_dict(data, self, "rem_eth_addr")
-        return data
+    def __str__(self):
+        return "ct_id: %s dp_id: %s dp_port: %s dp0_port: %s"\
+               % (self.ct_id,
+                  self.dp_id, self.dp_port, self.dp0_port)
 
+    def get_status(self):
+        return RFENTRY_ACTIVE
 
-class RFConfigEntry:
+class RFConfigEntry(BaseEntry):
     def __init__(self, vm_id=None, vm_port=None, ct_id=None, dp_id=None,
                  dp_port=None):
         self.id = None
@@ -458,21 +465,3 @@ class RFConfigEntry:
                               self.dp_id, self.dp_port,
                               self.ct_id)
 
-    def from_dict(self, data):
-        self.id = data["_id"]
-        load_from_dict(data, self, "vm_id")
-        load_from_dict(data, self, "vm_port")
-        load_from_dict(data, self, "ct_id")
-        load_from_dict(data, self, "dp_id")
-        load_from_dict(data, self, "dp_port")
-
-    def to_dict(self):
-        data = {}
-        if self.id is not None:
-            data["_id"] = self.id
-        pack_into_dict(data, self, "vm_id")
-        pack_into_dict(data, self, "vm_port")
-        pack_into_dict(data, self, "ct_id")
-        pack_into_dict(data, self, "dp_id")
-        pack_into_dict(data, self, "dp_port")
-        return data
