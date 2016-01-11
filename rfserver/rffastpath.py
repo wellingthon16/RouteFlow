@@ -108,7 +108,7 @@ class MetaVLAN(MetaLabel):
         return action
 
     def rfaction_pop_meta(self, routemod):
-        routemod.add_action(Action.STRIP_VLAN())
+        routemod.add_action(Action.STRIP_VLAN_DEFERRED())
         return routemod
 
     def ofmatch_meta(self, parser, label, match=None):
