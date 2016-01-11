@@ -1,42 +1,7 @@
 #!/bin/bash
 
-# Set to 0 to use external switch(es)
-STARTBVMS=1
+source ./projectw.cfg
 
-# If rfserverconfig.csv and rfserverinternal.csv exist in /home/projectw,
-# use them and don't try to configure rfvm1. If they do not exist, use values
-# below for default config.
-DPPORTNET=172.31
-DPPORTNETV6=fc00::
-DPPORTS=2
-VIDS=()
-SWITCH1DPID=0x99
-# Multi-table datapaths are listed by 'DPID/vendor' to allow the proper
-# flow mods to be sent for each vendor's pipeline.
-# Examples:
-#    MULTITABLEDPS="0x99/corsa"
-#    MULTITABLEDPS="0x99/noviflow"
-MULTITABLEDPS="''"
-SATELLITEDPS="''"
-
-HOME=/home/projectw
-RF_HOME=$HOME/RouteFlow
-RFSERVERCONFIG=/tmp/rfserverconfig.csv
-RFSERVERINTERNAL=/tmp/rfserverinternal.csv
-HOME_RFSERVERCONFIG="$HOME/"`basename $RFSERVERCONFIG`
-HOME_RFSERVERINTERNAL="$HOME/"`basename $RFSERVERINTERNAL`
-CONTROLLER_PORT=6653
-LXCDIR=/var/lib/lxc
-RFVM1=$LXCDIR/rfvm1
-RFBR=br0
-RFDP=dp0
-RFDPID=7266767372667673
-OFP=OpenFlow13
-RFVM1IP=192.168.10.100
-HOSTVMIP=192.168.10.1
-OVSSOCK=/tmp/openvswitch-db.sock
-VSCTL="ovs-vsctl --db=unix:$OVSSOCK"
-OFCTL="ovs-ofctl -O$OFP"
 export PATH=$PATH:/usr/local/bin:/usr/local/sbin
 export PYTHONPATH=$PYTHONPATH:$RF_HOME
 
@@ -117,6 +82,11 @@ check_local_br_up() {
 }
 
 start_ovs() {
+	if [ -f /etc/init.d/openvswitch-switch ] ; then
+		# openvswitch isn't managed by us
+		return
+	fi
+
 	if [ ! -f /usr/local/etc/openvswitch/conf.db ] ; then
 		ovsdb-tool create /usr/local/etc/openvswitch/conf.db /usr/local/share/openvswitch/vswitch.ovsschema
 	fi
@@ -156,6 +126,8 @@ default_config() {
     for i in `seq 1 $DPPORTS` ; do
       echo 0x12a0a0a0a0a0,$i,0,$SWITCH1DPID,$i >> $RFSERVERCONFIG
     done
+    cp /dev/null $RFFASTPATH
+    echo "ct_id,dp_id,dp_port,dp0_port" > $RFFASTPATH
 
     # Configure the VM
     cat > $RFVM1/config <<EOF
@@ -213,23 +185,14 @@ iface eth0 inet static
 EOF
 
 for i in `seq 1 $DPPORTS` ; do
-        vid=${VIDS[((i-1))]}
-        iface=eth$i
-        vlan_conf=
-        if [[ -n "${vid}" ]]; then
-            iface+=".${vid}"
-            vlan_conf="vlan-raw-device eth$i"
-        fi
         cat >> $RFVM1/rootfs/etc/network/interfaces<<EOF
 
-auto $iface
-iface $iface inet static
+auto eth$i
+iface eth$i inet static
    address $DPPORTNET.$i.1
    netmask 255.255.255.0
-   ${vlan_conf}
-iface $iface inet6 static
+iface eth$i inet6 static
    address $DPPORTNETV6$i:1/112
-   ${vlan_conf}
 EOF
 done
 }
@@ -294,15 +257,25 @@ reset() {
     rm -rf $RFVM1/rootfs/opt/rfclient;
     rm -rf $RFSERVERCONFIG
     rm -rf $RFSERVERINTERNAL
+    rm -rf $RFFASTPATH
+    if [ -n "$ICC_INT" ]; then
+        ip link del $ICC_INT
+    fi
 }
 reset 1
 trap "reset 0; exit 0" INT
+
+# Get the dp0 OpenFlow port of a named interface
+get_dp0_port() {
+    echo `$OFCTL dump-ports-desc $RFDP | grep $1 | cut -d '(' -f 1 | xargs`
+}
 
 if [ "$ACTION" != "RESET" ]; then
     if [ -f "$HOME_RFSERVERCONFIG" ] && [ -f "$HOME_RFSERVERINTERNAL" ] ; then
         echo_bold "-> Using existing external config..."
         cp $HOME_RFSERVERCONFIG $RFSERVERCONFIG
         cp $HOME_RFSERVERINTERNAL $RFSERVERINTERNAL
+        cp $HOME_RFFASTPATH $RFFASTPATH
     else
         echo_bold "-> Using default config..."
         default_config
@@ -313,7 +286,7 @@ if [ "$ACTION" != "RESET" ]; then
     ifconfig $RFBR $HOSTVMIP
 
     echo_bold "-> Starting RFServer..."
-    nice ./rfserver/rfserver.py $RFSERVERCONFIG -i $RFSERVERINTERNAL -m $MULTITABLEDPS -s $SATELLITEDPS &
+    nice ./rfserver/rfserver.py $RFSERVERCONFIG -i $RFSERVERINTERNAL -m $MULTITABLEDPS -s $SATELLITEDPS -f $RFFASTPATH &
 
     echo_bold "-> Starting the controller ($ACTION) and RFPRoxy..."
     case "$ACTION" in
@@ -331,7 +304,7 @@ if [ "$ACTION" != "RESET" ]; then
     $VSCTL set bridge $RFDP other-config:datapath-id=$RFDPID
     $VSCTL set bridge $RFDP protocols=$OFP
     $VSCTL set-controller $RFDP tcp:127.0.0.1:$CONTROLLER_PORT
-    $OFCTL add-flow $RFDP actions=CONTROLLER:65509
+    $OFCTL add-flow $RFDP priority=0,actions=CONTROLLER:65509
     ifconfig $RFDP up
     check_local_br_up $RFDP
 
@@ -347,13 +320,58 @@ if [ "$ACTION" != "RESET" ]; then
       echo -n .
       sleep 1
     done
-    
+
     $VSCTL add-port $RFBR rfvm1.0
     for i in `netstat -i|grep rfvm1|cut -f 1 -d " "` ; do
       if [ "$i" != "rfvm1.0" ] ; then
         $VSCTL add-port $RFDP $i
       fi
     done
+
+    # Add any fastpath links to dp0 and verify that the get the port number we expect
+    tail -n +2 $DP0LINKS | while IFS=, read interface dp0_port
+    do
+        # Match the fastpath connection to the directly connected ports upon that switch
+        # Add the interface
+        $VSCTL add-port $RFDP $interface -- set Interface $interface ofport_request="$dp0_port"
+        # Verify that it got the correct port number
+        new_port=$(get_dp0_port $interface)
+        if [ "$new_port" != "$dp0_port" ]; then
+            echo_bold "Error: fastpath mapped to wrong OF port $interface required =$dp0_port but instead is =$new_port"
+            kill -INT $$
+        else
+            echo_bold "Successfully added $interface as port $new_port"
+        fi
+    done
+
+    # Setup inband control channel
+    if [ -n "$ICC_INT" ]; then
+        ip link add $ICC_INT type veth peer name ${ICC_INT}ovs
+        ip addr add $ICC_NETWORK dev $ICC_INT
+        # Add one end to OVS
+        $VSCTL add-port $RFDP ${ICC_INT}ovs -- set Interface ${ICC_INT}ovs ofport_request=$ICC_REQUEST_PORT
+        icc_port=$(get_dp0_port $ICC_INT)
+        icc_fp_port=$(get_dp0_port $ICC_FASTPATH_INT)
+        if ! test "$icc_port" -ge 0 2>/dev/null ; then
+            echo_bold "Error: Failed to map icc_port"
+            kill -INT $$
+        fi
+        if ! test "$icc_fp_port" -ge 0 2>/dev/null ; then
+            echo_bold "Error: Invalid ICC_FASTPATH_INT specified"
+            kill -INT $$
+        fi
+        ip link set $ICC_INT up
+        ip link set ${ICC_INT}ovs up
+        # Add these rules at a low priority below the fastpath rules
+        $OFCTL add-flow $RFDP priority=3000,in_port=$icc_port,action=output:$icc_fp_port
+        $OFCTL add-flow $RFDP priority=3000,in_port=$icc_fp_port,action=output:$icc_port
+    fi
+
+    echo_bold "-> Setting up $RFDP"
+    # Run the fastpath code to create rules on dp0
+    echo -e "\033[1m"
+    ./rfserver/rffastpath.py $RFSERVERCONFIG -i $RFSERVERINTERNAL -m $MULTITABLEDPS -s $SATELLITEDPS -f $RFFASTPATH -v "$OFCTL" -d $RFDP
+    echo -e "\033[0m"
 
     echo_bold "-> Waiting for rfvm1 to come up..."
     while ! ping -W 1 -c 1 $RFVM1IP ; do
