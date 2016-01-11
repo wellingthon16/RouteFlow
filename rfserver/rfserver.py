@@ -54,6 +54,7 @@ class RouteModTranslator(object):
         self.ct_id = ct_id
         self.rftable = rftable
         self.fpconf = fpconf
+        self.islconf = islconf
         self.isltable = isltable
         self.conf = conf
         self.labeller = labeller
