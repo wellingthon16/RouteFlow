@@ -20,6 +20,7 @@ RFAT_SET_QUEUE = 14     # Set queue
 RFAT_APPLY_METER = 15   # Apply meter
 RFAT_GROUP_DEFERRED = 16 # Output group (defer in write instructions)
 RFAT_SET_VLAN_ID = 17   # Set VLAN ID
+RFAT_STRIP_VLAN = 18    # Strip VLAN now
 RFAT_DROP = 254         # Drop packet (Unimplemented)
 RFAT_SFLOW = 255        # Generate SFlow messages (Unimplemented)
 
@@ -123,6 +124,10 @@ class Action(TLV):
         return cls(RFAT_STRIP_VLAN_DEFERRED)
 
     @classmethod
+    def STRIP_VLAN(cls):
+        return cls(RFAT_STRIP_VLAN)
+
+    @classmethod
     def CLEAR_DEFERRED(cls):
         return cls(RFAT_CLEAR_DEFERRED, None)
 
@@ -160,7 +165,7 @@ class Action(TLV):
         elif actionType in (RFAT_SET_ETH_SRC, RFAT_SET_ETH_DST):
             return ether_to_bin(value)
         elif actionType in (RFAT_POP_MPLS, RFAT_DROP, RFAT_SFLOW,
-                            RFAT_STRIP_VLAN_DEFERRED, RFAT_CLEAR_DEFERRED):
+                            RFAT_STRIP_VLAN_DEFERRED, RFAT_STRIP_VLAN, RFAT_CLEAR_DEFERRED):
             return ''
         else:
             return None
@@ -178,7 +183,7 @@ class Action(TLV):
         elif self._type in (RFAT_SET_ETH_SRC, RFAT_SET_ETH_DST):
             return bin_to_ether(self._value)
         elif self._type in (RFAT_POP_MPLS, RFAT_DROP, RFAT_SFLOW,
-                            RFAT_STRIP_VLAN_DEFERRED, RFAT_CLEAR_DEFERRED):
+                            RFAT_STRIP_VLAN_DEFERRED, RFAT_STRIP_VLAN, RFAT_CLEAR_DEFERRED):
             return None
         else:
             return None

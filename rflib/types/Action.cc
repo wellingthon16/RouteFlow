@@ -40,6 +40,7 @@ std::string Action::type_to_string() const {
         case RFAT_SWAP_MPLS:        return "RFAT_SWAP_MPLS";
         case RFAT_PUSH_VLAN_ID:     return "RFAT_PUSH_VLAN_ID";
         case RFAT_STRIP_VLAN_DEFERRED:  return "RFAT_STRIP_VLAN_DEFERRED";
+        case RFAT_STRIP_VLAN:       return "RFAT_STRIP_VLAN";
         case RFAT_SWAP_VLAN_ID:     return "RFAT_SWAP_VLAN_ID";
         case RFAT_GROUP:            return "RFAT_GROUP";
         case RFAT_GOTO:             return "RFAT_GOTO";

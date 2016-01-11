@@ -21,6 +21,7 @@ enum ActionType {
     RFAT_APPLY_METER = 15,  /* Apply meter */
     RFAT_GROUP_DEFERRED = 16, /* Output group (defer in write instructions) */
     RFAT_SET_VLAN_ID = 17,  /* Set VLAN ID */
+    RFAT_STRIP_VLAN = 18,   /* Strip VLAN now. */
     RFAT_DROP = 254,        /* Drop packet (Unimplemented) */
     RFAT_SFLOW = 255,       /* Generate SFlow messages (Unimplemented) */
 };
