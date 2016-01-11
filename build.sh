@@ -18,10 +18,10 @@ APT_OPTS="-y"
 PIP_OPTS=""
 
 ROUTEFLOW_GIT="https://github.com/routeflow/RouteFlow.git"
-DEPENDENCIES="build-essential git-core libboost-dev libboost-dev \
+DEPENDENCIES="build-essential autoconf pkg-config git-core libboost-dev libboost-dev \
     libboost-program-options-dev libboost-thread-dev \
-    libboost-filesystem-dev libboost-system-dev iproute-dev python-dev \
-    python-pip python-bson"
+    libboost-filesystem-dev libboost-system-dev libnl-3-dev libnl-route-3-dev \
+    python-dev python-pip python-bson"
 
 usage() {
     echo "usage:$0 [-hcqvdsgiu] [-m MONGO_VERSION] [-o OVS_VERSION]" \
@@ -154,10 +154,10 @@ build_routeflow() {
 
         if [ $INSTALL_VMS -eq 1 ]; then
             $DO cd rftest
-            $SUPER mkdir -p /cgroup
 
-            grep -q cgroup /etc/fstab
+            grep -q cgroup /etc/fstab || grep -q cgroup /proc/mounts
             if [ $? -eq 1 ]; then
+                $SUPER mkdir -p /cgroup
                 if [ -z "$DO" ]; then
                     echo "none /cgroup cgroup defaults 0 0" | $SUPER tee -a /etc/fstab > /dev/null
                 else
@@ -166,8 +166,8 @@ build_routeflow() {
                 if [ $? -ne 0 ]; then
                     print_status "Can't add cgroup to /etc/fstab" $YELLOW
                 fi
+                $SUPER mount none -t cgroup /cgroup
             fi
-            $SUPER mount none -t cgroup /cgroup
             $SUPER ./create || fail "Couldn't install VMs"
             $DO cd -
         fi
