@@ -892,7 +892,7 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
         "corsa-v3" : CorsaMultitableRouteModTranslator_v3,
     }
 
-    def __init__(self, configfile, islconffile, multitabledps, satellitedps):
+    def __init__(self, configfile, islconffile, multitabledps, satellitedps, fpconf):
         self.config = RFConfig(configfile)
         self.islconf = RFISLConf(islconffile)
         self.fpconf = RFFPConf(fpconf)
