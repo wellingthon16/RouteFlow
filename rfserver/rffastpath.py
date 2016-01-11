@@ -92,7 +92,7 @@ class MetaVLAN(MetaLabel):
         return action
 
     def rfaction_push_meta(self, label, routemod):
-        routemod.add_action(Action.SET_VLAN_ID(label))
+        routemod.add_action(Action.PUSH_VLAN_ID(label))
         return routemod
 
     def ovsaction_pop_meta(self, action=None):

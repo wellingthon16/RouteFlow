@@ -37,7 +37,6 @@ REGISTER_IDLE = 0
 REGISTER_ASSOCIATED = 1
 REGISTER_ISL = 2
 
-
 class RouteModTranslator(object):
 
     DROP_PRIORITY = Option.PRIORITY(PRIORITY_LOWEST + PRIORITY_BAND)
@@ -46,16 +45,16 @@ class RouteModTranslator(object):
     FASTPATH_PRIORITY = Option.PRIORITY(PRIORITY_HIGH + 1)
     DEFAULT_PRIORITY = Option.PRIORITY(PRIORITY_LOWEST + PRIORITY_BAND + 1000)
 
-    # The table used to tag fastpath packets
+    #The table used to tag fastpath packets
     FP_TABLE = 1
 
     def __init__(self, dp_id, ct_id, rftable, isltable, conf, islconf, fpconf, log, labeller):
         self.dp_id = dp_id
         self.ct_id = ct_id
         self.rftable = rftable
+        self.isltable = isltable
         self.fpconf = fpconf
         self.islconf = islconf
-        self.isltable = isltable
         self.conf = conf
         self.labeller = labeller
         self.log = log

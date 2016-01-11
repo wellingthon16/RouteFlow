@@ -164,8 +164,7 @@ class Action(TLV):
             return int_to_bin(value, 32)
         elif actionType in (RFAT_SET_ETH_SRC, RFAT_SET_ETH_DST):
             return ether_to_bin(value)
-        elif actionType in (RFAT_POP_MPLS, RFAT_DROP, RFAT_SFLOW,
-                            RFAT_STRIP_VLAN_DEFERRED, RFAT_STRIP_VLAN, RFAT_CLEAR_DEFERRED):
+        elif actionType in (RFAT_POP_MPLS, RFAT_DROP, RFAT_SFLOW, RFAT_STRIP_VLAN_DEFERRED, RFAT_STRIP_VLAN, RFAT_CLEAR_DEFERRED):
             return ''
         else:
             return None
@@ -182,8 +181,7 @@ class Action(TLV):
             return bin_to_int(self._value)
         elif self._type in (RFAT_SET_ETH_SRC, RFAT_SET_ETH_DST):
             return bin_to_ether(self._value)
-        elif self._type in (RFAT_POP_MPLS, RFAT_DROP, RFAT_SFLOW,
-                            RFAT_STRIP_VLAN_DEFERRED, RFAT_STRIP_VLAN, RFAT_CLEAR_DEFERRED):
+        elif self._type in (RFAT_POP_MPLS, RFAT_DROP, RFAT_SFLOW, RFAT_STRIP_VLAN_DEFERRED, RFAT_STRIP_VLAN, RFAT_CLEAR_DEFERRED):
             return None
         else:
             return None
