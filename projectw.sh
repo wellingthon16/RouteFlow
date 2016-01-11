@@ -275,7 +275,9 @@ if [ "$ACTION" != "RESET" ]; then
         echo_bold "-> Using existing external config..."
         cp $HOME_RFSERVERCONFIG $RFSERVERCONFIG
         cp $HOME_RFSERVERINTERNAL $RFSERVERINTERNAL
-        cp $HOME_RFFASTPATH $RFFASTPATH
+        if [ -f "$HOME_RFFASTPATH" ] ; then
+            cp $HOME_RFFASTPATH $RFFASTPATH
+        fi
     else
         echo_bold "-> Using default config..."
         default_config
