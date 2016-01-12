@@ -377,6 +377,13 @@ class NoviFlowMultitableRouteModTranslator(RouteModTranslator):
         rm.add_action(Action.GOTO(self.ETHER_TABLE))
         rm.add_option(self.CONTROLLER_PRIORITY)
         rms.append(rm)
+        # IPv6 neighbor discovery
+        rm = RouteMod(RMT_ADD, self.dp_id)
+        rm.add_match(Match.ETHERTYPE(ETHERTYPE_IPV6))
+        rm.add_match(Match.NW_PROTO(IPPROTO_ICMPV6))
+        rm.add_option(self.CONTROLLER_PRIORITY)
+        rm.add_action(Action.GOTO(self.FIB_TABLE))
+        rms.append(rm)
         # ARP
         rm = RouteMod(RMT_ADD, self.dp_id)
         rm.set_table(self.ETHER_TABLE)
@@ -390,6 +397,7 @@ class NoviFlowMultitableRouteModTranslator(RouteModTranslator):
         rm.add_option(self.DEFAULT_PRIORITY)
         rm.add_action(Action.GOTO(self.FIB_TABLE))
         rms.append(rm)
+
 
         # Register fastpath rules
         if self.fpconf.enabled:
