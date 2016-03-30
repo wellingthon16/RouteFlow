@@ -24,7 +24,6 @@
 using namespace std;
 
 #define EMPTY_MAC_ADDRESS "00:00:00:00:00:00"
-#define ROUTE_COOLDOWN 5000 /* milliseconds */
 
 #ifndef IF_NAMESIZE
 #define IF_NAMESIZE 32
@@ -132,6 +131,13 @@ void FlowTable::initNLListener() {
     if (err < 0) {
         syslog(LOG_CRIT,
                 "%s: %s", "nl_cache_mngr_alloc()", nl_geterror(err));
+        throw -1;
+    }
+
+    err = nl_socket_set_buffer_size(sock, nl_buffersize, 0);
+    if (err < 0) {
+        syslog(LOG_CRIT,
+                "%s: %s", "nl_socket_set_buffer_size()", nl_geterror(err));
         throw -1;
     }
 
@@ -259,7 +265,6 @@ void FlowTable::GWResolverCb(FlowTable *ft) {
                                "Deleting route %s/%s via %s",
                                addr_str.c_str(), mask_str.c_str(), gw_str.c_str());
                         ft->sendToHw(pr.type, pr.rentry);
-                          
                     } else {
                         syslog(LOG_ERR,
                                "Received route removal for %s but not in routing table",
@@ -275,37 +280,40 @@ void FlowTable::GWResolverCb(FlowTable *ft) {
             }
         }
         if (ft->unresolvedRoutes.size() > 0) {
+            set<string> unresolvedGateways;
             set<string> resolvedRoutes;
             set<string>::iterator it;
-            uint64_t gatewaysResolved = 0;
             for (it = ft->unresolvedRoutes.begin(); it != ft->unresolvedRoutes.end(); ++it) {
                 const RouteEntry& re = ft->routeTable[*it];
                 const string addr_str = re.address.toString();
                 const string mask_str = re.netmask.toString();
                 const string gw_str = re.gateway.toString();
+                // Skip this route, we have already tried to resolve
+                // in this run.
+                if (unresolvedGateways.find(gw_str) != unresolvedGateways.end()) {
+                    continue;
+                }
                 if (ft->findHost(re.gateway) == MAC_ADDR_NONE) {
-                    usleep(1000); // SOMETHINGS NOT quite right here we'll rate limit for now
                     syslog(LOG_DEBUG,
                           "Still cannot resolve gateway %s, will retry route %s/%s",
                           gw_str.c_str(), addr_str.c_str(), mask_str.c_str());
                     ft->resolveGateway(re.gateway, re.interface);
+                    unresolvedGateways.insert(gw_str);
                 } else {
                     syslog(LOG_DEBUG,
                            "Adding previously unresolved route %s/%s via %s",
                            addr_str.c_str(), mask_str.c_str(), gw_str.c_str());
                     ft->sendToHw(RMT_ADD, re);
                     resolvedRoutes.insert(*it);
-                    ++gatewaysResolved;
                 }
             }
-            if (gatewaysResolved) {
+            if (resolvedRoutes.size() > 0) {
                 for (it = resolvedRoutes.begin(); it != resolvedRoutes.end(); ++it) {
                     ft->unresolvedRoutes.erase(*it);    
                 }
             }
-        } else {
-            usleep(1000);
-        } 
+        }
+        usleep(1000);
     }
 }
 
@@ -363,13 +371,14 @@ void FlowTable::updateHostTable(struct rtnl_neigh *neigh,
 
     boost::this_thread::interruption_point();
 
-    if (action != NL_ACT_NEW) {
+    if (action != NL_ACT_NEW && action != NL_ACT_CHANGE) {
         /**
          * TODO: We should definitely include support for hosts being deleted.
          * It is also possible that hosts will get lost as they are
          * added if they exist in the cache and change from a non NUD_VALID
          * state to a NUD_VALID state.
          */
+        syslog(LOG_DEBUG, "got unknown action type %i\n", action);
         return;
     }
 
@@ -410,22 +419,17 @@ void FlowTable::updateHostTable(struct rtnl_neigh *neigh,
     }
     hentry->hwaddress = MACAddress(mac);
 
-    switch (action) {
-        case NL_ACT_NEW: {
-            syslog(LOG_DEBUG, "netlink->RTM_NEWNEIGH: ip=%s, mac=%s",
-                   host.c_str(), mac);
-            this->sendToHw(RMT_ADD, *hentry);
-            {
-                // Add to host table
-                boost::lock_guard<boost::mutex> lock(hostTableMutex);
-                this->hostTable[host] = *hentry;
-            }
-            // If we have been attempting neighbour discovery for this
-            // host, then we can close the associated socket.
-            stopND(host);
-            break;
-        }
+    syslog(LOG_DEBUG, "netlink->RTM_NEWNEIGH: action=%i ip=%s, mac=%s",
+        action, host.c_str(), mac);
+    this->sendToHw(RMT_ADD, *hentry);
+    {
+        // Add to host table
+        boost::lock_guard<boost::mutex> lock(hostTableMutex);
+        this->hostTable[host] = *hentry;
     }
+    // If we have been attempting neighbour discovery for this
+    // host, then we can close the associated socket.
+    stopND(host);
 
     return;
 }
@@ -445,7 +449,7 @@ void FlowTable::updateRouteTable(  struct rtnl_route *route,
 
     boost::this_thread::interruption_point();
 
-    if (!(action == NL_ACT_NEW || action == NL_ACT_DEL)) {
+    if (!(action == NL_ACT_NEW || action == NL_ACT_DEL || NL_ACT_CHANGE)) {
         return;
     }
 
@@ -520,6 +524,7 @@ void FlowTable::updateRouteTable(  struct rtnl_route *route,
     string gw = rentry->gateway.toString();
 
     switch (action) {
+        case NL_ACT_CHANGE:
         case NL_ACT_NEW:
             syslog(LOG_DEBUG, "netlink->RTM_NEWROUTE: net=%s, mask=%s, gw=%s",
                    net.c_str(), mask.c_str(), gw.c_str());
@@ -532,6 +537,7 @@ void FlowTable::updateRouteTable(  struct rtnl_route *route,
             break;
         default:
             syslog(LOG_DEBUG, "route with invalid action, ignoring");
+            break;
     }
 
     return;
@@ -550,6 +556,8 @@ int FlowTable::initiateND(const char *hostAddr) {
     struct sockaddr_in6 *sin6 = (struct sockaddr_in6*)&store;
 
     memset(&store, 0, sizeof(store));
+
+    syslog(LOG_INFO, "Initiating neighbor discovery for IP %s\n", hostAddr);
 
     if (inet_pton(AF_INET, hostAddr, &sin->sin_addr) == 1) {
         store.ss_family = AF_INET;
