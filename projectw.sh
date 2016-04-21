@@ -131,6 +131,8 @@ default_config() {
 
     # Configure the VM
     cat > $RFVM1/config <<EOF
+lxc.include = /usr/share/lxc/config/ubuntu.common.conf
+lxc.arch = x86_64
 lxc.aa_profile = lxc-container-default-with-mounting
 lxc.tty = 4
 lxc.pts = 1024
